@@ -1,43 +1,17 @@
-# Base & CLI & Config
-python-dotenv
-typer
-tqdm
+ipython
+jupyterlab
 loguru
-
-# Testing & Code Quality
-pytest
-ruff
-
-# Documentation
-mkdocs
-
-# Notebooks
-ipykernel
-
-# Data Processing & Storage
+matplotlib
+mlflow==3.17.2
+notebook
 numpy
 pandas
+pip
 pyarrow
-polars
-
-# Spatial / Mobility Analysis
-geopandas
-folium
-shapely
-
-# Machine Learning & Modeling
+pytest
+python-dotenv
+ruff
 scikit-learn
-lightgbm
-statsmodels
-
-# MLOps & Experiment Tracking
-mlflow
-dvc
-evidently
-
-# Visualization
-matplotlib
-seaborn
-
-# Local package
+tqdm
+typer
 -e .

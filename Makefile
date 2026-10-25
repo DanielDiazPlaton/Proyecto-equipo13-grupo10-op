@@ -2,8 +2,8 @@
 # GLOBALS                                                                       #
 #################################################################################
 
-PROJECT_NAME = Proyecto-equipo13-grupo10-op
-PYTHON_VERSION = 3.13
+PROJECT_NAME = mibici-mlops
+PYTHON_VERSION = 3.11
 PYTHON_INTERPRETER = python
 
 #################################################################################
@@ -61,10 +61,15 @@ create_environment:
 #################################################################################
 
 
-## Make dataset
+## Corre la Fase 1 completa (limpieza, features, EDA y versiones en MLflow)
 .PHONY: data
-data: requirements
-	$(PYTHON_INTERPRETER) mibici/dataset.py
+data:
+	$(PYTHON_INTERPRETER) -m mibici.pipeline
+
+## Abre la interfaz de MLflow con el historial de versiones
+.PHONY: mlflow-ui
+mlflow-ui:
+	mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
 
 
 #################################################################################

@@ -1,0 +1,20 @@
+{
+  "viajes": 1207341,
+  "usuarios_unicos": 22514,
+  "estaciones_origen": 469,
+  "viajes_dia_promedio": 13123.271739130434,
+  "viajes_dia_habil": 14268.242424242424,
+  "viajes_dia_fds": 10216.807692307691,
+  "dia_max": "2026-09-30",
+  "viajes_dia_max": "20686",
+  "dia_min": "2026-07-25",
+  "viajes_dia_min": "8052",
+  "duracion_mediana": 9.183333333333334,
+  "duracion_media": 10.871991177306162,
+  "duracion_p95": 24.333333333333332,
+  "pct_mujeres": 27.114460620487502,
+  "pct_hombres": 72.23535024487695,
+  "edad_mediana": 32.0,
+  "pct_viajes_circulares": 2.97761775670668,
+  "viajes_por_usuario_mediana": 28.0
+}

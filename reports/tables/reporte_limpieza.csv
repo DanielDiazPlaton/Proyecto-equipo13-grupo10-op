@@ -1,0 +1,8 @@
+regla,filas_antes,filas_eliminadas,filas_despues,nota
+duplicados_exactos,1271837,758,1271079,
+fechas_invalidas_o_negativas,1271079,0,1271079,
+duracion_menor_1_min,1271079,52779,1218300,anclaje fallido o arrepentimiento
+misma_estacion_menor_2_min,1218300,8871,1209429,bicicleta devuelta de inmediato
+duracion_mayor_180_min,1209429,151,1209278,"outlier, bicicleta no anclada"
+estacion_fuera_de_catalogo,1209278,1937,1207341,
+anio_nacimiento_invalido_a_nulo,1207341,0,1207341,89 valores fuera de rango convertidos a nulo

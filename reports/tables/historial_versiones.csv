@@ -1,0 +1,5 @@
+tags.data.version,tags.data.stage,tags.data.parent_version,metrics.n_rows,metrics.n_cols,tags.data.sha256,run_id
+v0,raw,ninguna,1271837.0,9.0,ae874bbb1ee3c98228a3f06bc1cd40ad822aeb36980bc49e0ea069875db7f21a,47d95a7c0414499aaf721c48153dbc9d
+v1,interim,v0,1207341.0,14.0,fa547bf66f45f4037fa3a1962d37fc6fe738ff2f3bcb7bb11ae7a080505f9d87,0c77368c717a497b96d8fdb8dadd8afe
+v1b,interim,v0,1204974.0,14.0,b104f96d50a561633031d275ed21973c1efd23e2f7bb691155cdf7b1d4cb9481,d45868407b334946b6398e673d0ba14b
+v2,processed,v1,956760.0,25.0,482456b91ddaadbc37194fcba0e257bd0bac6a5f6f98fca32e27e46a7a499a0b,52a52db6c56e43e3ab28a12d49cc601a

@@ -1,61 +1,73 @@
-# Proyecto mi bici
+# mibici-mlops
 
-<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
-    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+Proyecto del curso Operaciones de aprendizaje automático (Gpo 10), Tecnológico de Monterrey.
 
-El dataset abierto de MiBici, sistema de bicicletas públicas del Área Metropolitana de Guadalajara, proporciona información histórica sobre el uso del servicio desde diciembre de 2014 hasta septiembre de 2026, con más de 39 millones de viajes registrados. Los datos están disponibles en archivos CSV organizados por mes y año, permitiendo analizar patrones de movilidad urbana, estaciones de origen y destino, horarios de mayor demanda y tendencias temporales. Este conjunto de datos representa una excelente oportunidad para desarrollar un proyecto de Machine Learning (ML) utilizando la metodología MLOps, donde podrán implementar modelos de predicción de demanda, identificar patrones de movilidad, detectar anomalías y estimar necesidades de redistribución de bicicletas etc. El proyecto permitirá trabajar con datos reales y aplicar prácticas de ingeniería de datos, versionamiento de datasets, entrenamiento y evaluación de modelos, automatización de pipelines, despliegue y monitoreo del desempeño de modelos de ML a lo largo del tiempo.
+Equipo 13:
 
-## Project Organization
+| Integrante | Rol principal |
+|---|---|
+| Daniel Díaz Platón | Dueño de producto / analista de negocio |
+| Luis Ángel Díaz Rebollo | Ingeniero de datos |
+| Manuel Díaz Borrego | Científico de datos |
+| José Carlos Cruz Martínez | Ingeniero de ML / MLOps y DevOps |
+
+Objetivo: pronosticar la demanda horaria de bicicletas por estación del sistema MiBici
+(Área Metropolitana de Guadalajara) para apoyar la redistribución de bicicletas.
+
+## Fase 1: datos
+
+La Fase 1 cubre la preparación de datos: carga, limpieza, análisis exploratorio,
+construcción de variables y versionado de cada versión del dataset en MLflow.
+
+Datos usados: viajes de julio, agosto y septiembre de 2026 y el catálogo de estaciones
+`nomenclatura_2026_09.csv`, descargados de https://mibici.net/es/datos-abiertos/.
+Los CSV se colocan en `data/raw/` (no se suben al repositorio por su tamaño).
+
+## Cómo reproducir
+
+```bash
+make create_environment
+make requirements
+make data      # corre mibici/pipeline.py: limpieza, features, EDA y versiones en MLflow
+make test
+make mlflow-ui # abre la interfaz de MLflow en http://localhost:5000
+```
+
+## Versiones del dataset (registradas en MLflow)
+
+| Versión | Etapa | Descripción |
+|---|---|---|
+| v0 | raw | Viajes crudos concatenados de los tres meses |
+| v1 | interim | Viajes limpios, duración máxima de 180 min (criterio de dominio) |
+| v1b | interim | Variante experimental, duración máxima por regla de Tukey sobre log(duración) |
+| v2 | processed | Panel estación-hora con variables de calendario, rezagos y perfil de estación |
+
+Cada run guarda parámetros de limpieza, métricas de filas eliminadas, esquema, huella
+SHA-256 del contenido y el archivo parquet resultante.
+
+## Organización del proyecto
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
+├── Makefile             <- Comandos: requirements, data, test, lint, mlflow-ui
+├── README.md
 ├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
-│
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
-│
-├── models             <- Trained and serialized models, model predictions, or model summaries
-│
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
-│
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         mibici and configuration for tools like black
-│
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-│
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── mibici   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes mibici a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
+│   ├── raw              <- CSV originales de MiBici (no versionados en git)
+│   ├── interim          <- viajes_limpios_v1.parquet
+│   └── processed        <- panel_estacion_hora_v2.parquet
+├── notebooks            <- Notebook de exploración que usa el paquete refactorizado
+├── references           <- Diccionario de datos y bitácora de cambios
+├── reports
+│   ├── figures          <- Figuras del EDA y capturas de MLflow
+│   └── tables           <- Reporte de limpieza, resumen del EDA, líneas base
+├── tests                <- Pruebas unitarias de limpieza y versionado
+└── mibici               <- Código fuente del proyecto
+    ├── config.py        <- Rutas y parámetros (CleaningConfig, FeatureConfig)
+    ├── dataset.py       <- MiBiciLoader: lectura y homologación de columnas
+    ├── cleaning.py      <- TripCleaner: reglas de limpieza con reporte por regla
+    ├── features.py      <- StationProfiler (PCA + KMeans) y DemandFeatureBuilder
+    ├── plots.py         <- EDAReport: estadísticas y figuras
+    ├── versioning.py    <- DatasetVersioner: registro de versiones en MLflow
+    └── pipeline.py      <- Orquestación de la Fase 1
 ```
 
---------
-
+Estructura basada en la plantilla Cookiecutter Data Science v2.
