@@ -1,0 +1,43 @@
+# Base & CLI & Config
+python-dotenv
+typer
+tqdm
+loguru
+
+# Testing & Code Quality
+pytest
+ruff
+
+# Documentation
+mkdocs
+
+# Notebooks
+ipykernel
+
+# Data Processing & Storage
+numpy
+pandas
+pyarrow
+polars
+
+# Spatial / Mobility Analysis
+geopandas
+folium
+shapely
+
+# Machine Learning & Modeling
+scikit-learn
+lightgbm
+statsmodels
+
+# MLOps & Experiment Tracking
+mlflow
+dvc
+evidently
+
+# Visualization
+matplotlib
+seaborn
+
+# Local package
+-e .

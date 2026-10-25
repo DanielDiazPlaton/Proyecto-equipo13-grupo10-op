@@ -1,0 +1,32 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "mibici"
+version = "0.0.1"
+description = "El dataset abierto de MiBici, sistema de bicicletas p\u00fablicas del \u00c1rea Metropolitana de Guadalajara, proporciona informaci\u00f3n hist\u00f3rica sobre el uso del servicio desde diciembre de 2014 hasta septiembre de 2026, con m\u00e1s de 39 millones de viajes registrados. Los datos est\u00e1n disponibles en archivos CSV organizados por mes y a\u00f1o, permitiendo analizar patrones de movilidad urbana, estaciones de origen y destino, horarios de mayor demanda y tendencias temporales. Este conjunto de datos representa una excelente oportunidad para desarrollar un proyecto de Machine Learning (ML) utilizando la metodolog\u00eda MLOps, donde podr\u00e1n implementar modelos de predicci\u00f3n de demanda, identificar patrones de movilidad, detectar anomal\u00edas y estimar necesidades de redistribuci\u00f3n de bicicletas etc. El proyecto permitir\u00e1 trabajar con datos reales y aplicar pr\u00e1cticas de ingenier\u00eda de datos, versionamiento de datasets, entrenamiento y evaluaci\u00f3n de modelos, automatizaci\u00f3n de pipelines, despliegue y monitoreo del desempe\u00f1o de modelos de ML a lo largo del tiempo."
+authors = [
+  { name = "Daniel Diaz Platon, Jose Carlos Cruz Martinez, Luis Ángel Diaz Rebollo, Manuel Diaz Borrego" },
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License"
+]
+requires-python = "~=3.13.0"
+
+
+[tool.ruff]
+line-length = 99
+src = ["mibici"]
+include = ["pyproject.toml", "mibici/**/*.py"]
+
+[tool.ruff.lint]
+extend-select = ["I"]  # Add import sorting
+
+[tool.ruff.lint.isort]
+known-first-party = ["mibici"]
+force-sort-within-sections = true
+
