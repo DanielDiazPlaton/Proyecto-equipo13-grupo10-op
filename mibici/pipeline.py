@@ -130,7 +130,7 @@ def main(skip_eda: bool = False):
         parent_version="v0",
     )
 
-    # v2: panel estacion-hora con features para modelado (entrada de la Fase 2)
+    # Panel estacion-hora con features para modelado (entrada de la Fase 2)
     feat_cfg = FeatureConfig()
     profiler = StationProfiler(feat_cfg)
     # Los perfiles se ajustan solo con el periodo de entrenamiento para no filtrar

@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 import pandas as pd
 
-from mibici.config import MONTHS, RAW_DATA_DIR, STATIONS_FILE
+from mibici.config import CSV_ENCODINGS, MONTHS, RAW_DATA_DIR, STATIONS_FILE
 
 TRIP_COLUMNS = {
     "Viaje_Id": "trip_id",
@@ -27,6 +27,16 @@ STATION_COLUMNS = {
 }
 
 
+def read_csv_any_encoding(path: Path, **kwargs) -> pd.DataFrame:
+    """Lee un CSV probando las codificaciones conocidas, en orden."""
+    for encoding in CSV_ENCODINGS[:-1]:
+        try:
+            return pd.read_csv(path, encoding=encoding, **kwargs)
+        except UnicodeDecodeError:
+            logger.warning(f"{Path(path).name} no esta en {encoding}; se prueba la siguiente")
+    return pd.read_csv(path, encoding=CSV_ENCODINGS[-1], **kwargs)
+
+
 class MiBiciLoader:
     """Lee los CSV publicados en mibici.net y homologa nombres y tipos."""
 
@@ -41,7 +51,7 @@ class MiBiciLoader:
         for month in months:
             path = self.trip_file(month)
             logger.info(f"Leyendo {path.name}")
-            df = pd.read_csv(path, encoding="utf-8", dtype={"Genero": "string"})
+            df = read_csv_any_encoding(path, dtype={"Genero": "string"})
             df = df.rename(columns=TRIP_COLUMNS)
             df["source_month"] = month
             frames.append(df)
@@ -50,7 +60,7 @@ class MiBiciLoader:
         return trips
 
     def load_stations(self, filename: str = STATIONS_FILE) -> pd.DataFrame:
-        stations = pd.read_csv(self.raw_dir / filename, encoding="utf-8")
+        stations = read_csv_any_encoding(self.raw_dir / filename)
         stations = stations.rename(columns=STATION_COLUMNS)
         # El prefijo del nombre indica el municipio: GDL, ZPN o TLQ.
         stations["zone"] = stations["station_name"].str.extract(r"\((GDL|ZPN|TLQ)-")[0]

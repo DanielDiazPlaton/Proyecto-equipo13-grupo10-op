@@ -1,7 +1,7 @@
 """Entrenamiento, ajuste, evaluacion y registro de los modelos de demanda (Fase 2).
 
 Flujo:
-    1. Carga el panel estacion-hora (v2) y lo parte por fecha en entrenamiento y prueba.
+    1. Carga el panel estacion-hora y lo parte por fecha en entrenamiento y prueba.
     2. Arma un Pipeline de scikit-learn por modelo candidato (preprocesamiento + modelo).
     3. Ajusta hiperparametros con busqueda aleatoria y validacion cruzada temporal.
     4. Evalua el mejor pipeline de cada modelo en el periodo de prueba.

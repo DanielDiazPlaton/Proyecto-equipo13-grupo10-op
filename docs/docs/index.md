@@ -26,7 +26,7 @@ El `Makefile` reúne los puntos de entrada del proyecto. `make help` muestra la 
 | Comando | Qué hace |
 |---|---|
 | `make requirements` | Instala las dependencias |
-| `make data` | Construye las versiones v0, v1, v1b y v2 del dataset |
+| `make data` | Construye las versiones v0, v1, v1b y v2.1 del dataset |
 | `make train` | Ajusta, evalúa y registra los modelos |
 | `make predict` | Genera el pronóstico con el modelo `champion` del Model Registry |
 | `make test` | Corre las pruebas unitarias |

@@ -30,7 +30,9 @@ TABLES_DIR = REPORTS_DIR / "tables"
 CLEAN_TRIPS_FILE = INTERIM_DATA_DIR / "viajes_limpios_v1.parquet"
 PANEL_FILE = PROCESSED_DATA_DIR / "panel_estacion_hora_v2.parquet"
 PREDICTIONS_FILE = PROCESSED_DATA_DIR / "pronostico_salidas.parquet"
-PANEL_VERSION = "v2"
+# v2.1: mismo panel que la v2 de la Fase 1, con los atributos de estacion del
+# catalogo de octubre de 2026 (ver references/bitacora_cambios_datos.md).
+PANEL_VERSION = "v2.1"
 
 # MLflow: backend local en SQLite para que cualquier integrante pueda
 # reproducir los runs sin levantar un servidor. Se puede cambiar con la
@@ -52,7 +54,9 @@ SKOPS_TRUSTED_TYPES = [
 
 # Meses usados en el proyecto
 MONTHS = ["2026_07", "2026_08", "2026_09"]
-STATIONS_FILE = "nomenclatura_2026_09.csv"
+STATIONS_FILE = "nomenclatura_2026_10.csv"
+# MiBici publica unos archivos en UTF-8 y otros en Latin-1; se prueban en este orden.
+CSV_ENCODINGS = ("utf-8", "latin-1")
 
 # Dias festivos dentro del periodo analizado (Mexico)
 HOLIDAYS = ["2026-09-16"]

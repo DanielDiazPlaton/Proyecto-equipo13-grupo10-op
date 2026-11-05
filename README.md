@@ -30,7 +30,7 @@ make mlflow-ui  # interfaz de MLflow en http://localhost:5000
 ```
 
 Datos usados: viajes de julio, agosto y septiembre de 2026 y el catálogo de estaciones
-`nomenclatura_2026_09.csv`, descargados de https://mibici.net/es/datos-abiertos/.
+`nomenclatura_2026_10.csv`, descargados de https://mibici.net/es/datos-abiertos/.
 Los cuatro CSV se colocan en `data/raw/` (no se suben al repositorio por su tamaño).
 
 ## Fase 1: datos
@@ -43,14 +43,15 @@ del dataset en MLflow (experimento `mibici-fase1-datos`).
 | v0 | raw | Viajes crudos concatenados de los tres meses |
 | v1 | interim | Viajes limpios, duración máxima de 180 min (criterio de dominio) |
 | v1b | interim | Variante experimental, duración máxima por regla de Tukey sobre log(duración) |
-| v2 | processed | Panel estación-hora con variables de calendario, rezagos y perfil de estación |
+| v2 | processed | Panel estación-hora con variables de calendario, rezagos y perfil de estación (catálogo de septiembre) |
+| v2.1 | processed | El mismo panel con los atributos de estación del catálogo de octubre; es la versión vigente |
 
 Cada run guarda parámetros de limpieza, métricas de filas eliminadas, esquema, huella
 SHA-256 del contenido y el archivo parquet resultante.
 
 ## Fase 2: modelos
 
-`make train` corre `mibici/modeling/train.py` sobre el panel v2:
+`make train` corre `mibici/modeling/train.py` sobre el panel v2.1:
 
 1. **Partición temporal.** Entrenamiento hasta el 16 de septiembre y prueba del 17 al 30.
 2. **Pipeline de scikit-learn.** Cada modelo es un `Pipeline` con dos pasos: `preprocess`

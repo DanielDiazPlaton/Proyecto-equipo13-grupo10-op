@@ -18,7 +18,7 @@ Los CSV no se suben al repositorio por su tamaño. Descarga de
 - `datos_abiertos_2026_07.csv`
 - `datos_abiertos_2026_08.csv`
 - `datos_abiertos_2026_09.csv`
-- `nomenclatura_2026_09.csv`
+- `nomenclatura_2026_10.csv`
 
 ## 3. Fase 1: datos
 
