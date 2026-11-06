@@ -1,87 +1,72 @@
-"""Pipeline de la Fase 1: carga, limpieza, EDA, features y versionado en MLflow.
+"""Pipeline de datos (Fase 1): carga, limpieza, EDA, features y versionado en MLflow.
 
 Uso:
     python -m mibici.pipeline            # corre todo
     python -m mibici.pipeline --skip-eda # solo datos y versiones
+
+El entrenamiento de modelos (Fase 2) esta en mibici/modeling/train.py y parte del
+panel que deja este pipeline.
 """
 
 import json
 
 from loguru import logger
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 import typer
 
 from mibici.cleaning import TripCleaner, iqr_upper_fence
 from mibici.config import (
-    INTERIM_DATA_DIR,
+    CLEAN_TRIPS_FILE,
     MONTHS,
-    PROCESSED_DATA_DIR,
-    REPORTS_DIR,
+    PANEL_FILE,
+    PANEL_VERSION,
+    TABLES_DIR,
+    TEST_START,
     CleaningConfig,
     FeatureConfig,
 )
 from mibici.dataset import MiBiciLoader
 from mibici.features import (
-    CATEGORICAL_FEATURES,
-    NUMERIC_FEATURES,
+    MODEL_FEATURES,
     TARGET,
     DemandFeatureBuilder,
     StationProfiler,
     build_preprocessor,
 )
+from mibici.modeling.evaluation import baseline_metrics, regression_metrics, temporal_split
 from mibici.plots import EDAReport
 from mibici.versioning import DatasetVersioner
 
 app = typer.Typer()
 
 
-TEST_START = "2026-09-17"
+def evaluate_baselines(panel: pd.DataFrame, test_start: str = TEST_START) -> pd.DataFrame:
+    """Lineas base para validar que el panel tiene senal predictiva. No es el modelo final.
 
-
-def temporal_split(panel: pd.DataFrame, test_start: str = TEST_START):
-    """Entrenamiento antes de la fecha de corte y prueba despues (sin fuga de informacion)."""
-    cut = pd.Timestamp(test_start)
-    return panel[panel["hour_ts"] < cut], panel[panel["hour_ts"] >= cut]
-
-
-def evaluate_baselines(panel: pd.DataFrame) -> pd.DataFrame:
-    """Lineas base para validar que el panel tiene senal predictiva. No es el modelo final."""
-    train, test = temporal_split(panel)
-    y = test[TARGET]
-    rows = []
-    for name, pred in [
-        ("ingenuo_lag_168h", test["dep_lag_168"]),
-        ("media_movil_24h", test["dep_roll_mean_24"]),
-    ]:
-        rows.append((name, pred))
-    ridge = make_pipeline(build_preprocessor(), Ridge(alpha=1.0))
-    ridge.fit(train[NUMERIC_FEATURES + CATEGORICAL_FEATURES], train[TARGET])
-    pred = np.clip(ridge.predict(test[NUMERIC_FEATURES + CATEGORICAL_FEATURES]), 0, None)
-    rows.append(("ridge_features_escaladas", pd.Series(pred, index=test.index)))
-    out = []
-    for name, pred in rows:
-        out.append(
-            {
-                "modelo": name,
-                "MAE": mean_absolute_error(y, pred),
-                "RMSE": float(np.sqrt(mean_squared_error(y, pred))),
-                "WAPE_pct": float(np.abs(y - pred).sum() / y.sum() * 100),
-            }
-        )
-    return pd.DataFrame(out)
+    Compara las dos reglas fijas con una regresion Ridge sin ajustar. El ajuste de
+    hiperparametros y la comparacion de modelos se hacen en mibici/modeling/train.py.
+    """
+    train, test = temporal_split(panel, test_start)
+    ridge = Pipeline([("preprocess", build_preprocessor()), ("model", Ridge(alpha=1.0))])
+    ridge.fit(train[MODEL_FEATURES], train[TARGET])
+    ridge_row = {
+        "modelo": "ridge_features_escaladas",
+        **regression_metrics(test[TARGET], ridge.predict(test[MODEL_FEATURES])),
+    }
+    return pd.concat(
+        [baseline_metrics(test, TARGET), pd.DataFrame([ridge_row])], ignore_index=True
+    )
 
 
 @app.command()
 def main(skip_eda: bool = False):
     loader = MiBiciLoader()
     versioner = DatasetVersioner()
-    INTERIM_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    tables_dir = REPORTS_DIR / "tables"
+    CLEAN_TRIPS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PANEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tables_dir = TABLES_DIR
     tables_dir.mkdir(parents=True, exist_ok=True)
 
     # v0: datos crudos tal como se descargan
@@ -111,7 +96,7 @@ def main(skip_eda: bool = False):
     report = cleaner.report_frame()
     report_path = tables_dir / "reporte_limpieza.csv"
     report.to_csv(report_path, index=False)
-    clean_path = INTERIM_DATA_DIR / "viajes_limpios_v1.parquet"
+    clean_path = CLEAN_TRIPS_FILE
     clean.to_parquet(clean_path, index=False)
     versioner.log_version(
         clean,
@@ -145,14 +130,14 @@ def main(skip_eda: bool = False):
         parent_version="v0",
     )
 
-    # v2: panel estacion-hora con features para modelado
+    # Panel estacion-hora con features para modelado (entrada de la Fase 2)
     feat_cfg = FeatureConfig()
     profiler = StationProfiler(feat_cfg)
     # Los perfiles se ajustan solo con el periodo de entrenamiento para no filtrar
     # informacion del periodo de prueba hacia las features.
     clusters = profiler.fit_transform(clean[clean["start_time"] < pd.Timestamp(TEST_START)])
     panel = DemandFeatureBuilder(stations, feat_cfg).build(clean, clusters)
-    panel_path = PROCESSED_DATA_DIR / "panel_estacion_hora_v2.parquet"
+    panel_path = PANEL_FILE
     panel.to_parquet(panel_path, index=False)
     baselines = evaluate_baselines(panel)
     baselines_path = tables_dir / "lineas_base.csv"
@@ -166,7 +151,7 @@ def main(skip_eda: bool = False):
     versioner.log_version(
         panel,
         "mibici_panel",
-        "v2",
+        PANEL_VERSION,
         "processed",
         params=feat_cfg.to_params(),
         metrics=metrics,
