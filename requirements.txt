@@ -7,7 +7,6 @@ mlflow==3.17.2
 notebook==7.6.4
 numpy==2.4.6
 pandas==3.1.1
-pip
 pyarrow==25.0.1
 pytest==9.2.0
 python-dotenv==1.2.4
@@ -15,4 +14,7 @@ ruff==0.17.4
 scikit-learn==1.9.1
 skops==0.16.0
 typer==0.27.3
+requests
+tqdm
+beautifulsoup4
 -e .
