@@ -1,17 +1,16 @@
 """Carga y descarga de los datos crudos de MiBici (viajes mensuales y catalogo de estaciones)."""
 
 import io
-import re
-import zipfile
-import requests
-import pandas as pd
-
 from pathlib import Path
+import re
 from urllib.parse import urljoin
+import zipfile
+
 from bs4 import BeautifulSoup
 from loguru import logger
+import pandas as pd
+import requests
 from tqdm.auto import tqdm
-
 
 from mibici.config import CSV_ENCODINGS, MONTHS, RAW_DATA_DIR, STATIONS_FILE
 
@@ -52,7 +51,6 @@ def read_csv_any_encoding(path: Path, **kwargs) -> pd.DataFrame:
         except UnicodeDecodeError:
             logger.warning(f"{Path(path).name} no esta en {encoding}; se prueba la siguiente")
     return pd.read_csv(path, encoding=CSV_ENCODINGS[-1], **kwargs)
-
 
 
 class MiBiciLoader:
@@ -120,7 +118,9 @@ class MiBiciLoader:
             total_size = int(resp.headers.get("content-length", 0))
             buffer = io.BytesIO()
 
-            with tqdm(total=total_size, unit="B", unit_scale=True, desc=f"datos_{year}_{m:02d}") as pbar:
+            with tqdm(
+                total=total_size, unit="B", unit_scale=True, desc=f"datos_{year}_{m:02d}"
+            ) as pbar:
                 for chunk in resp.iter_content(chunk_size=1024 * 64):
                     if chunk:
                         buffer.write(chunk)
