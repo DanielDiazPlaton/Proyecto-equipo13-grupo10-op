@@ -1,4 +1,4 @@
-"""Analisis exploratorio (EDA): estadisticas descriptivas y figuras del reporte."""
+"""Figuras del proyecto: analisis exploratorio (EDAReport) y modelos (ModelReport)."""
 
 from pathlib import Path
 
@@ -9,13 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from mibici.config import FIGURES_DIR
+from mibici.config import FIGURES_DIR, HOLIDAYS
 
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
 CATEGORICAL = [BLUE, ORANGE, AQUA, YELLOW]
 MARKERS = ["o", "s", "^", "D"]
 TEXT, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 
 plt.rcParams.update(
     {
@@ -43,12 +44,10 @@ plt.rcParams.update(
 )
 
 
-class EDAReport:
-    """Genera las estadisticas y figuras del EDA a partir de los viajes limpios."""
+class FigureWriter:
+    """Guarda las figuras con el mismo formato y lleva la lista de archivos generados."""
 
-    def __init__(self, trips: pd.DataFrame, stations: pd.DataFrame, out_dir: Path = FIGURES_DIR):
-        self.trips = trips
-        self.stations = stations
+    def __init__(self, out_dir: Path = FIGURES_DIR):
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.files: list[Path] = []
@@ -60,6 +59,15 @@ class EDAReport:
         plt.close(fig)
         self.files.append(path)
         return path
+
+
+class EDAReport(FigureWriter):
+    """Genera las estadisticas y figuras del EDA a partir de los viajes limpios."""
+
+    def __init__(self, trips: pd.DataFrame, stations: pd.DataFrame, out_dir: Path = FIGURES_DIR):
+        super().__init__(out_dir)
+        self.trips = trips
+        self.stations = stations
 
     # Estadisticas descriptivas
     def summary(self) -> dict:
@@ -113,10 +121,11 @@ class EDAReport:
             linewidth=1.5,
             label="Sábado o domingo",
         )
-        hol = pd.Timestamp("2026-09-16")
-        if hol in daily.index:
+        for hol in pd.to_datetime(HOLIDAYS):
+            if hol not in daily.index:
+                continue
             ax.annotate(
-                "16 sep (día festivo)",
+                f"{hol.day} {MONTHS_ES[hol.month - 1]} (día festivo)",
                 (hol, daily[hol]),
                 xytext=(0, -28),
                 textcoords="offset points",
@@ -317,3 +326,120 @@ class EDAReport:
         axes[1].set_ylabel("Coeficiente de silueta")
         axes[1].set_title("Selección de k en KMeans")
         return self._save(fig, "fig11_pca_silueta.png")
+
+
+MODEL_LABELS = {
+    "ingenuo_lag_168h": "Misma hora, semana anterior",
+    "media_movil_24h": "Promedio de 24 h previas",
+    "ridge": "Ridge",
+    "poisson_glm": "Regresión Poisson",
+    "gradient_boosting": "Gradient boosting",
+}
+
+
+def model_label(name: str) -> str:
+    return MODEL_LABELS.get(name, name)
+
+
+class ModelReport(FigureWriter):
+    """Figuras de la comparacion, el ajuste y el diagnostico de los modelos (Fase 2)."""
+
+    def plot_model_comparison(self, summary: pd.DataFrame) -> Path:
+        """Error en el periodo de prueba de cada modelo y de las reglas fijas."""
+        table = summary.sort_values("MAE", ascending=False)
+        labels = [model_label(m) for m in table["modelo"]]
+        colors = [MUTED if t == "linea_base" else BLUE for t in table["tipo"]]
+        fig, axes = plt.subplots(1, 2, figsize=(9, 3.2), sharey=True)
+        for ax, metric, title in zip(axes, ["MAE", "RMSE"], ["MAE (viajes)", "RMSE (viajes)"]):
+            ax.barh(labels, table[metric], color=colors, height=0.65)
+            for y, v in enumerate(table[metric]):
+                ax.text(v, y, f" {v:.3f}", va="center", fontsize=8, color=MUTED)
+            ax.set_title(title)
+            ax.set_xlim(0, table[metric].max() * 1.18)
+            ax.grid(axis="y", visible=False)
+        fig.suptitle(
+            "Error en el periodo de prueba (gris: regla fija, azul: modelo)",
+            x=0.01,
+            ha="left",
+            fontsize=10,
+            color=MUTED,
+        )
+        return self._save(fig, "fig14_comparacion_modelos.png")
+
+    def plot_search(self, trials: pd.DataFrame) -> Path:
+        """RMSE de validacion de cada combinacion de hiperparametros probada."""
+        names = list(dict.fromkeys(trials["modelo"]))
+        fig, ax = plt.subplots(figsize=(9, 3.4))
+        for x, name in enumerate(names):
+            part = trials[trials["modelo"] == name]
+            rest = part[~part["es_mejor"]]
+            best = part[part["es_mejor"]]
+            ax.scatter([x] * len(rest), rest["cv_rmse"], color=BLUE, alpha=0.45, s=36)
+            ax.scatter(
+                [x] * len(best),
+                best["cv_rmse"],
+                color=ORANGE,
+                s=70,
+                zorder=3,
+                edgecolor="white",
+                linewidth=1.2,
+                label="Mejor combinación" if x == 0 else None,
+            )
+        ax.set_xticks(range(len(names)), [model_label(n) for n in names])
+        ax.set_xlim(-0.5, len(names) - 0.5)
+        ax.set_ylabel("RMSE de validación cruzada")
+        ax.set_title("Ajuste de hiperparámetros: una marca por combinación probada")
+        ax.grid(axis="x", visible=False)
+        ax.legend(loc="upper right")
+        return self._save(fig, "fig15_ajuste_hiperparametros.png")
+
+    def plot_forecast(self, frame: pd.DataFrame, target: str, name: str) -> Path:
+        """Demanda real y pronosticada del sistema completo, hora por hora."""
+        total = frame.groupby("hour_ts")[[target, "pronostico"]].sum()
+        fig, ax = plt.subplots(figsize=(9, 3.6))
+        ax.plot(total.index, total[target], color=TEXT, lw=1.3, label="Real")
+        ax.plot(total.index, total["pronostico"], color=BLUE, lw=1.6, label=model_label(name))
+        ax.set_title("Viajes por hora en todo el sistema durante el periodo de prueba")
+        ax.set_ylabel("Viajes por hora")
+        ax.yaxis.set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%d/%m"))
+        ax.legend(loc="upper left", ncols=2)
+        return self._save(fig, "fig16_real_vs_pronostico.png")
+
+    def plot_error_by_hour(self, frame: pd.DataFrame, target: str, name: str) -> Path:
+        """MAE por hora del dia: mejor modelo contra la regla de la semana anterior."""
+        errors = pd.DataFrame(
+            {
+                "hour": frame["hour"],
+                "modelo": (frame[target] - frame["pronostico"]).abs(),
+                "ingenuo": (frame[target] - frame["ingenuo"]).abs(),
+            }
+        )
+        by_hour = errors.groupby("hour").mean()
+        fig, ax = plt.subplots(figsize=(9, 3.4))
+        ax.plot(
+            by_hour.index,
+            by_hour["ingenuo"],
+            color=MUTED,
+            lw=2,
+            label="Misma hora, semana anterior",
+        )
+        ax.plot(by_hour.index, by_hour["modelo"], color=BLUE, lw=2, label=model_label(name))
+        ax.set_xticks(range(0, 24, 2))
+        ax.set_xlabel("Hora del día")
+        ax.set_ylabel("MAE (viajes)")
+        ax.set_title("Error por hora del día en el periodo de prueba")
+        ax.legend(loc="upper left")
+        return self._save(fig, "fig17_error_por_hora.png")
+
+    def plot_importance(self, importance: pd.DataFrame, name: str, n: int = 12) -> Path:
+        """Variables que mas aumentan el error al desordenarlas."""
+        top = importance.head(n).iloc[::-1]
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.barh(
+            top["variable"], top["aumento_rmse"], xerr=top["desviacion"], color=BLUE, height=0.65
+        )
+        ax.set_title(f"Importancia por permutación ({model_label(name)})")
+        ax.set_xlabel("Aumento del RMSE al desordenar la variable")
+        ax.grid(axis="y", visible=False)
+        return self._save(fig, "fig18_importancia_variables.png")

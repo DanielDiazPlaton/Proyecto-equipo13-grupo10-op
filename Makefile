@@ -47,13 +47,11 @@ test:
 	python -m pytest tests
 
 
-## Set up Python interpreter environment
+## Crea el entorno virtual en .venv (activar con: source .venv/bin/activate)
 .PHONY: create_environment
 create_environment:
-	@bash -c "if [ ! -z `which virtualenvwrapper.sh` ]; then source `which virtualenvwrapper.sh`; mkvirtualenv $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); else mkvirtualenv.bat $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); fi"
-	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
-	
-
+	python$(PYTHON_VERSION) -m venv .venv
+	@echo ">>> Entorno creado. Activalo con: source .venv/bin/activate"
 
 
 #################################################################################
@@ -61,12 +59,32 @@ create_environment:
 #################################################################################
 
 
+## Revisa los CSV de data/raw: archivos, columnas, catalogo y huella de la version v0
+.PHONY: check-raw
+check-raw:
+	$(PYTHON_INTERPRETER) -m mibici.validation raw
+
+## Valida el esquema del panel estacion-hora (tambien corre dentro de make train)
+.PHONY: validate
+validate:
+	$(PYTHON_INTERPRETER) -m mibici.validation panel
+
 ## Corre la Fase 1 completa (limpieza, features, EDA y versiones en MLflow)
 .PHONY: data
 data:
 	$(PYTHON_INTERPRETER) -m mibici.pipeline
 
-## Abre la interfaz de MLflow con el historial de versiones
+## Ajusta, evalua y registra los modelos en MLflow (Fase 2). Requiere: make data
+.PHONY: train
+train:
+	$(PYTHON_INTERPRETER) -m mibici.modeling.train
+
+## Genera el pronostico con el modelo champion del Model Registry
+.PHONY: predict
+predict:
+	$(PYTHON_INTERPRETER) -m mibici.modeling.predict
+
+## Abre la interfaz de MLflow: experimentos, comparacion de runs y Model Registry
 .PHONY: mlflow-ui
 mlflow-ui:
 	mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000

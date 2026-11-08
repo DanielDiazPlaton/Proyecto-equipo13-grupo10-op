@@ -1,5 +1,11 @@
-# Data
-/data/
+# Data: se conservan las carpetas de la plantilla, no su contenido
+/data/*/*
+!/data/*/.gitkeep
+
+# MLflow local (tracking en SQLite y artefactos)
+mlflow.db
+mlruns/
+mlartifacts/
 
 # Mac OS-specific storage files
 .DS_Store
