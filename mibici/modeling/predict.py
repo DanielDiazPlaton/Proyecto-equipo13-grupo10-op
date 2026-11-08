@@ -29,6 +29,7 @@ from mibici.config import (
 )
 from mibici.features import MODEL_FEATURES, TARGET
 from mibici.modeling.evaluation import TIME_COLUMN, clip_counts, regression_metrics
+from mibici.validation import PanelValidator
 
 app = typer.Typer()
 
@@ -54,8 +55,16 @@ class DemandForecaster:
             f"({self.version.tags.get('modelo', 'sin etiqueta')}, alias {alias})"
         )
 
-    def predict(self, panel: pd.DataFrame) -> pd.DataFrame:
-        """Devuelve estacion, hora y pronostico. Si el panel trae el valor real, lo conserva."""
+    def predict(self, panel: pd.DataFrame, validate: bool = True) -> pd.DataFrame:
+        """Devuelve estacion, hora y pronostico. Si el panel trae el valor real,
+        lo conserva."""
+
+        if validate:
+            has_target = TARGET in panel.columns
+            validator = PanelValidator()
+            validator.validate(panel, require_target=has_target)
+            validator.raise_if_failed()
+
         keep = [c for c in ["station_id", TIME_COLUMN, TARGET] if c in panel.columns]
         out = panel[keep].copy()
         out[FORECAST_COLUMN] = clip_counts(self.model.predict(panel[MODEL_FEATURES]))

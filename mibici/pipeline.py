@@ -19,6 +19,7 @@ import typer
 from mibici.cleaning import TripCleaner, iqr_upper_fence
 from mibici.config import (
     CLEAN_TRIPS_FILE,
+    EXPECTED_FINGERPRINTS,
     MONTHS,
     PANEL_FILE,
     PANEL_VERSION,
@@ -37,6 +38,7 @@ from mibici.features import (
 )
 from mibici.modeling.evaluation import baseline_metrics, regression_metrics, temporal_split
 from mibici.plots import EDAReport
+from mibici.validation import PANEL_REPORT_FILE, PanelValidator
 from mibici.versioning import DatasetVersioner
 
 app = typer.Typer()
@@ -137,6 +139,12 @@ def main(skip_eda: bool = False):
     # informacion del periodo de prueba hacia las features.
     clusters = profiler.fit_transform(clean[clean["start_time"] < pd.Timestamp(TEST_START)])
     panel = DemandFeatureBuilder(stations, feat_cfg).build(clean, clusters)
+    # El panel no se guarda si no cumple el esquema que espera el modelado. El reporte
+    # se guarda antes de detener el proceso para poder revisar que regla fallo.
+    validator = PanelValidator()
+    validator.validate(panel, expected_fingerprint=EXPECTED_FINGERPRINTS.get(PANEL_VERSION))
+    validation_path = validator.save_report(PANEL_REPORT_FILE)
+    validator.raise_if_failed()
     panel_path = PANEL_FILE
     panel.to_parquet(panel_path, index=False)
     baselines = evaluate_baselines(panel)
@@ -155,7 +163,7 @@ def main(skip_eda: bool = False):
         "processed",
         params=feat_cfg.to_params(),
         metrics=metrics,
-        artifacts=[baselines_path],
+        artifacts=[baselines_path, validation_path],
         file_path=panel_path,
         parent_version="v1",
     )
