@@ -16,12 +16,13 @@ Objetivo: pronosticar la demanda horaria de bicicletas por estación del sistema
 
 ## Cómo reproducir
 
-Se requiere Python 3.11.
+Se requiere Python 3.11 o superior.
 
 ```bash
 make create_environment        # crea .venv
 source .venv/bin/activate      # en Windows: .venv\Scripts\activate
 make requirements
+python -c "from mibici.dataset import MiBiciLoader as L; l = L(); l.download_trips(2026, [7, 8, 9]); l.download_stations()"
 make data       # Fase 1: limpieza, features, EDA y versiones del dataset en MLflow
 make train      # Fase 2: ajuste, evaluación y registro de modelos en MLflow
 make predict    # pronóstico con el modelo champion del Model Registry
@@ -30,8 +31,11 @@ make mlflow-ui  # interfaz de MLflow en http://localhost:5000
 ```
 
 Datos usados: viajes de julio, agosto y septiembre de 2026 y el catálogo de estaciones
-`nomenclatura_2026_10.csv`, descargados de https://mibici.net/es/datos-abiertos/.
-Los cuatro CSV se colocan en `data/raw/` (no se suben al repositorio por su tamaño).
+`nomenclatura_2026_10.csv`, publicados en https://mibici.net/es/datos-abiertos/.
+Los cuatro CSV viven en `data/raw/` y no se suben al repositorio por su tamaño. No hace falta
+descargarlos a mano: `MiBiciLoader.download_trips()` y `MiBiciLoader.download_stations()`
+localizan los enlaces en el portal y guardan los archivos en `data/raw/`; si un archivo ya
+existe, se omite la descarga. El notebook `1.0-equipo13-eda-fase1.ipynb` muestra el uso.
 
 ## Fase 1: datos
 
@@ -113,7 +117,7 @@ Los resultados quedan en `reports/tables/` (`resultados_modelos.csv`,
 ├── tests                <- Pruebas unitarias de limpieza, versionado y modelado
 └── mibici               <- Código fuente del proyecto
     ├── config.py        <- Rutas, semilla, fecha de corte, parámetros y espacios de búsqueda
-    ├── dataset.py       <- MiBiciLoader: lectura y homologación de columnas
+    ├── dataset.py       <- MiBiciLoader: descarga desde mibici.net, lectura y homologación de columnas
     ├── cleaning.py      <- TripCleaner: reglas de limpieza con reporte por regla
     ├── features.py      <- StationProfiler, DemandFeatureBuilder y build_preprocessor
     ├── plots.py         <- EDAReport y ModelReport: estadísticas y figuras
