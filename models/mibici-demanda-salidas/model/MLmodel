@@ -1,0 +1,49 @@
+artifact_path: file:///C:/Users/churr/OneDrive/Escritorio/Maestria en Inteligencia
+  Artificial/MLOps/Proyecto etapa 2/Proyecto-equipo13-grupo10-op/mlruns/2/models/m-caae25088d91437d8885b08c4c45d7a0/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.11.9
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.1
+    skops_trusted_types:
+    - numpy.dtype
+    - sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor
+is_signature_from_type_hint: false
+mlflow_version: 3.17.2
+model_id: m-caae25088d91437d8885b08c4c45d7a0
+model_size_bytes: 1931700
+model_uuid: m-caae25088d91437d8885b08c4c45d7a0
+prompts: null
+run_id: 8927ded56f804032bdae45f7477772ea
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "hour_sin", "required": true}, {"type": "double",
+    "name": "hour_cos", "required": true}, {"type": "double", "name": "dow_sin", "required":
+    true}, {"type": "double", "name": "dow_cos", "required": true}, {"type": "integer",
+    "name": "is_weekend", "required": true}, {"type": "integer", "name": "is_holiday",
+    "required": true}, {"type": "double", "name": "dep_lag_1", "required": true},
+    {"type": "double", "name": "dep_lag_24", "required": true}, {"type": "double",
+    "name": "dep_lag_168", "required": true}, {"type": "double", "name": "dep_roll_mean_24",
+    "required": true}, {"type": "long", "name": "capacity", "required": true}, {"type":
+    "double", "name": "lat", "required": true}, {"type": "double", "name": "lon",
+    "required": true}, {"type": "double", "name": "pc1", "required": true}, {"type":
+    "double", "name": "pc2", "required": true}, {"type": "double", "name": "pc3",
+    "required": true}, {"type": "string", "name": "zone", "required": true}, {"type":
+    "string", "name": "station_cluster", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-11-22 05:45:33.768168'
