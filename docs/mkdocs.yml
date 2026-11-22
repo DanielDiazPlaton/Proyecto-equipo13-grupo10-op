@@ -5,3 +5,4 @@ nav:
   - Inicio: index.md
   - Cómo reproducir: getting-started.md
   - Validación de los datos: validacion.md
+  - API del modelo: api.md
