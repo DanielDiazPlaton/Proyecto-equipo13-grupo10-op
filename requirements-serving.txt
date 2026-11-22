@@ -1,0 +1,17 @@
+# Dependencias de la imagen Docker del servicio (Fase 3). Mismas versiones que
+# requirements.txt. mlflow-skinny basta para cargar el modelo en formato MLflow.
+fastapi==0.162.2
+loguru==0.7.3
+mlflow-skinny==3.17.2
+numpy==2.4.6
+pandas==3.1.1
+python-dotenv==1.2.4
+scikit-learn==1.9.1
+skops==0.16.0
+typer==0.27.3
+uvicorn==0.54.0
+# mibici.validation importa mibici.dataset, que las usa para descargar los datos.
+# En requirements.txt no tienen version; se fijan las del entorno del equipo.
+beautifulsoup4==4.15.0
+requests==2.34.2
+tqdm==4.70.1

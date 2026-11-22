@@ -104,6 +104,16 @@ api:
 openapi:
 	$(PYTHON_INTERPRETER) -m mibici.serving.openapi
 
+## Construye la imagen Docker del servicio
+.PHONY: docker-build
+docker-build:
+	docker build -t ml-service:latest .
+
+## Corre la imagen Docker del servicio en el puerto 8000
+.PHONY: docker-run
+docker-run:
+	docker run -p 8000:8000 ml-service:latest
+
 
 #################################################################################
 # Self Documenting Commands                                                     #
