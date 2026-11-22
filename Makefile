@@ -89,6 +89,11 @@ predict:
 mlflow-ui:
 	mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
 
+## Exporta el modelo champion a models/mibici-demanda-salidas para servirlo (Fase 3)
+.PHONY: export-model
+export-model:
+	$(PYTHON_INTERPRETER) -m mibici.modeling.export
+
 
 #################################################################################
 # Self Documenting Commands                                                     #
