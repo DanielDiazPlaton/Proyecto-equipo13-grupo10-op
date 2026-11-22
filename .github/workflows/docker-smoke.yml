@@ -1,0 +1,91 @@
+# Construye la imagen Docker del servicio, la corre y prueba la API por HTTP. Tambien corre
+# la imagen publicada en Docker Hub y revisa que las dos den el mismo pronostico.
+# Sirve como evidencia de que el servicio funciona en un entorno limpio (un runner de GitHub).
+name: Imagen Docker del servicio
+
+on:
+  push:
+    branches: [ci/docker-smoke]
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - requirements-serving.txt
+      - pyproject.toml
+      - "mibici/**"
+      - "models/**"
+      - ".github/workflows/docker-smoke.yml"
+      - ".github/scripts/smoke_api.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PUBLISHED_IMAGE: luisadr18/mibici-demanda:1.0.0
+
+jobs:
+  docker-smoke:
+    name: Construir, correr y probar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Construir la imagen
+        run: docker build -t ml-service:latest .
+
+      - name: Correr la imagen construida (puerto 8000)
+        run: docker run -d --name construida -p 8000:8000 ml-service:latest
+
+      - name: Correr la imagen publicada en Docker Hub (puerto 8001)
+        run: |
+          docker pull "$PUBLISHED_IMAGE"
+          docker run -d --name publicada -p 8001:8000 "$PUBLISHED_IMAGE"
+
+      - name: Esperar el HEALTHCHECK de los dos contenedores
+        run: |
+          for name in construida publicada; do
+            status=starting
+            for attempt in $(seq 1 60); do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$name")
+              if [ "$status" = "healthy" ]; then break; fi
+              sleep 2
+            done
+            echo "$name: $status"
+            [ "$status" = "healthy" ]
+          done
+
+      - name: El servicio no corre como root
+        run: |
+          for name in construida publicada; do
+            uid=$(docker exec "$name" id -u)
+            echo "$name corre con el usuario $uid"
+            [ "$uid" != "0" ]
+          done
+
+      - name: Probar la API de las dos imagenes
+        run: |
+          python3 .github/scripts/smoke_api.py \
+            --built http://127.0.0.1:8000 --published http://127.0.0.1:8001
+
+      - name: Resumen de las imagenes
+        if: always()
+        run: |
+          {
+            echo "## Imágenes"
+            echo
+            echo '```'
+            docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}' \
+              | grep -E 'REPOSITORY|ml-service|mibici-demanda'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Logs de los contenedores
+        if: always()
+        run: |
+          for name in construida publicada; do
+            echo "::group::$name"
+            docker logs "$name" 2>&1 | tail -n 60 || true
+            echo "::endgroup::"
+          done
