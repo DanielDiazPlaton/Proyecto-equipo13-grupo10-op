@@ -94,6 +94,16 @@ mlflow-ui:
 export-model:
 	$(PYTHON_INTERPRETER) -m mibici.modeling.export
 
+## Arranca la API de pronostico en http://localhost:8000 (documentacion en /docs)
+.PHONY: api
+api:
+	uvicorn mibici.serving.app:app --host 127.0.0.1 --port 8000
+
+## Escribe el esquema OpenAPI de la API en docs/openapi.json
+.PHONY: openapi
+openapi:
+	$(PYTHON_INTERPRETER) -m mibici.serving.openapi
+
 
 #################################################################################
 # Self Documenting Commands                                                     #
