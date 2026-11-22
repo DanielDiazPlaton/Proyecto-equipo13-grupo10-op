@@ -203,26 +203,29 @@ docker run -p 8000:8000 ml-service:latest
 
 ### Imagen en Docker Hub
 
-La imagen se publica como `<usuario>/mibici-demanda` con dos tags:
+La imagen está publicada en
+[luisadr18/mibici-demanda](https://hub.docker.com/r/luisadr18/mibici-demanda):
 
 | Tag | Significado |
 |---|---|
 | `1.0.0` | Versión semántica de la imagen; coincide con la versión de la API (`API_VERSION`). Sirve `models:/mibici-demanda-salidas/1`. |
-| `latest` | Apunta a la última versión publicada |
+| `latest` | Apunta a la última versión publicada (hoy, `1.0.0`) |
+
+Para correrla sin clonar el repositorio:
+
+```bash
+docker run -p 8000:8000 luisadr18/mibici-demanda:1.0.0
+```
 
 Convención: se sube un tag `MAYOR.MENOR.PARCHE` nuevo cada vez que cambia la imagen (el
 parche para correcciones, el menor para un modelo nuevo o un endpoint nuevo que no rompe la
-entrada, el mayor si cambia el esquema de entrada) y se mueve `latest` a esa versión.
-
-> **Pendiente:** la imagen todavía no está publicada. Para publicarla, después de
-> `docker login`:
+entrada, el mayor si cambia el esquema de entrada) y se mueve `latest` a esa versión:
 
 ```bash
-docker tag ml-service:latest <usuario>/mibici-demanda:1.0.0
-docker tag ml-service:latest <usuario>/mibici-demanda:latest
-docker push <usuario>/mibici-demanda:1.0.0
-docker push <usuario>/mibici-demanda:latest
-docker run -p 8000:8000 <usuario>/mibici-demanda:1.0.0   # comprobar que se descarga y corre
+docker tag ml-service:latest luisadr18/mibici-demanda:<version>
+docker tag ml-service:latest luisadr18/mibici-demanda:latest
+docker push luisadr18/mibici-demanda:<version>
+docker push luisadr18/mibici-demanda:latest
 ```
 
 ## Organización del proyecto

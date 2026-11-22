@@ -19,6 +19,7 @@ por histogramas con MAE de prueba 0.862 y RMSE de prueba 1.502. La API no necesi
 make api                     # local, en http://localhost:8000
 make docker-build            # docker build -t ml-service:latest .
 make docker-run              # docker run -p 8000:8000 ml-service:latest
+docker run -p 8000:8000 luisadr18/mibici-demanda:1.0.0   # imagen publicada en Docker Hub
 ```
 
 La carpeta del modelo se puede cambiar con la variable de entorno `MODEL_DIR`.
