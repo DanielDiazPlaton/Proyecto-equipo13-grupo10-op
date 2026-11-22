@@ -6,6 +6,7 @@ un directorio temporal al que apunta MODEL_DIR.
 """
 
 import json
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import mlflow
@@ -23,15 +24,14 @@ from mibici.modeling.evaluation import clip_counts
 from mibici.modeling.export import station_attributes
 from mibici.modeling.train import build_model_pipeline, model_catalog
 from mibici.serving.app import app
-
-from .conftest import TEST_START
+from tests.conftest import TEST_START
 
 LAG_COLUMNS = ["dep_lag_1", "dep_lag_24", "dep_lag_168", "dep_roll_mean_24"]
 
 
 @pytest.fixture(scope="module")
-def model_dir(panel, tmp_path_factory):
-    """Carpeta con un modelo exportado de prueba."""
+def exported(panel, tmp_path_factory):
+    """Carpeta con un modelo exportado de prueba y el pipeline que contiene."""
     folder = tmp_path_factory.mktemp("modelo_exportado")
     train = panel[panel["hour_ts"] < TEST_START]
     pipeline = build_model_pipeline(model_catalog()["ridge"])
@@ -47,14 +47,13 @@ def model_dir(panel, tmp_path_factory):
         "algoritmo": "ridge",
     }
     (folder / SERVING_INFO_FILE).write_text(json.dumps(info), encoding="utf-8")
-    return folder, pipeline
+    return SimpleNamespace(folder=folder, pipeline=pipeline)
 
 
 @pytest.fixture(scope="module")
-def client(model_dir):
-    folder, _ = model_dir
+def client(exported):
     with pytest.MonkeyPatch.context() as patch:
-        patch.setenv("MODEL_DIR", str(folder))
+        patch.setenv("MODEL_DIR", str(exported.folder))
         with TestClient(app) as test_client:  # el with corre el arranque (lifespan)
             yield test_client
 
@@ -81,8 +80,7 @@ def test_health_reports_the_loaded_model(client):
     }
 
 
-def test_predict_returns_one_non_negative_forecast_per_instance(client, model_dir, panel):
-    _, pipeline = model_dir
+def test_predict_returns_one_non_negative_forecast_per_instance(client, exported, panel):
     rows = sample_test_rows(panel)
     instances = []
     for _, row in rows.iterrows():
@@ -100,7 +98,7 @@ def test_predict_returns_one_non_negative_forecast_per_instance(client, model_di
         assert prediction["pronostico"] >= 0
         forecasts.append(prediction["pronostico"])
     # El servicio arma las mismas variables que el panel: mismo pronostico que el pipeline.
-    expected = clip_counts(pipeline.predict(rows[MODEL_FEATURES]))
+    expected = clip_counts(exported.pipeline.predict(rows[MODEL_FEATURES]))
     np.testing.assert_allclose(forecasts, expected, rtol=0, atol=1e-9)
 
 
