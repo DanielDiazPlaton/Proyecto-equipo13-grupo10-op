@@ -14,7 +14,7 @@ ruff==0.17.4
 scikit-learn==1.9.1
 skops==0.16.0
 typer==0.27.3
-requests
-tqdm
-beautifulsoup4
+requests==2.34.2
+tqdm==4.70.1
+beautifulsoup4==4.15.0
 -e .

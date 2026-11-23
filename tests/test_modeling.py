@@ -68,6 +68,7 @@ def test_pipeline_handles_unseen_category(panel):
     assert np.isfinite(pipeline.predict(new_station)).all()
 
 
+@pytest.mark.integration
 def test_experiment_registers_champion_and_forecaster_loads_it(panel, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # los artefactos de MLflow quedan en el directorio temporal
     uri = f"sqlite:///{tmp_path / 'mlflow.db'}"

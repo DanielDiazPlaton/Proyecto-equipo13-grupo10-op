@@ -31,6 +31,6 @@ El `Makefile` reúne los puntos de entrada del proyecto. `make help` muestra la 
 | `make validate` | Valida el esquema del panel estación-hora |
 | `make train` | Ajusta, evalúa y registra los modelos |
 | `make predict` | Genera el pronóstico con el modelo `champion` del Model Registry |
-| `make test` | Corre las pruebas unitarias |
+| `make test` | Corre las pruebas unitarias y de integración (`pytest -q`) |
 | `make lint` | Revisa el estilo con ruff |
 | `make mlflow-ui` | Abre la interfaz de MLflow |
