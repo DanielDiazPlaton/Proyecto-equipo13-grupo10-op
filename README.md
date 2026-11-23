@@ -27,6 +27,8 @@ make train      # Fase 2: ajuste, evaluación y registro de modelos en MLflow
 make predict    # pronóstico con el modelo champion del Model Registry
 make test       # todas las pruebas; equivale a: pytest -q
 make mlflow-ui  # interfaz de MLflow en http://localhost:5000
+make export-model  # Fase 3: exporta el champion a models/ para servirlo
+make api           # API de pronostico en http://localhost:8000/docs
 ```
 
 Datos usados: viajes de julio, agosto y septiembre de 2026 y el catálogo de estaciones
@@ -103,7 +105,7 @@ pytest -q
 
 `make test` hace lo mismo. Las pruebas usan datos sintéticos y un `mlflow.db` temporal, así que
 no necesitan los CSV de MiBici ni haber corrido `make data` o `make train`, y no tocan los
-experimentos del proyecto. Son 44 pruebas y tardan menos de un minuto.
+experimentos del proyecto. Son 52 pruebas y tardan alrededor de un minuto y medio.
 
 | Archivo | Tipo | Qué valida |
 |---|---|---|
@@ -113,34 +115,140 @@ experimentos del proyecto. Son 44 pruebas y tardan menos de un minuto.
 | `tests/test_inference.py` | Unitarias | Inferencia: `DemandForecaster.predict` con un modelo simulado (recorte de negativos, columnas, rechazo de un panel inválido) |
 | `tests/test_modeling.py` | Unitarias y una de integración | Partición y validación cruzada temporal, pipelines de cada modelo, y entrenamiento con registro en MLflow |
 | `tests/test_validation.py` | Unitarias | Validación del panel y de los CSV crudos |
+| `tests/test_api.py` | Unitarias | API con `TestClient` y un modelo chico exportado en un directorio temporal: `/health`, `/predict` válido, estación desconocida (404), entrada inválida (422), estación-hora repetida (422) y modelo sin cargar (503) |
 | `tests/test_integration.py` | Integración | Flujo completo: CSV crudos → limpieza → variables → validación → entrenamiento y Model Registry → predicción → métricas |
 
 Las pruebas de integración llevan el marcador `integration` y son las que entrenan modelos.
 Para correr solo una parte:
 
 ```bash
-pytest -q -m "not integration"   # 38 pruebas unitarias, en segundos
+pytest -q -m "not integration"   # 46 pruebas unitarias, en segundos
 pytest -q -m integration         # 6 pruebas de integración
+```
+
+## Servicio del modelo (Fase 3)
+
+### Artefacto servido
+
+| | |
+|---|---|
+| Modelo registrado | `models:/mibici-demanda-salidas/1` (alias `champion`) |
+| Algoritmo | Gradient boosting por histogramas (`HistGradientBoostingRegressor`) |
+| Métricas de prueba | MAE 0.862, RMSE 1.502 (`cv_rmse` 1.270) |
+| Carpeta en el repositorio | `models/mibici-demanda-salidas/` |
+
+`make export-model` (`mibici/modeling/export.py`) toma del Model Registry la versión con el
+alias `champion` y deja en `models/mibici-demanda-salidas/`:
+
+- `model/`: el pipeline en formato MLflow (`MLmodel` y `model.skops`).
+- `estaciones.csv`: los atributos fijos de las 469 estaciones (`lat`, `lon`, `capacity`,
+  `zone`, `pc1`, `pc2`, `pc3`, `station_cluster`).
+- `model_info.json`: nombre, versión, alias, `model_uri`, `run_id`, hiperparámetros, métricas
+  de validación y de prueba, versión (`v2.1`) y huella SHA-256 del panel, fecha de exportación
+  y versiones de Python, scikit-learn y MLflow.
+
+Esta carpeta sí se versiona en Git (pesa 2 MB): es lo que entra a la imagen Docker, así que
+el servicio no necesita `mlflow.db`. Si se promueve otra versión a `champion`, se vuelve a
+correr `make export-model`.
+
+### API con FastAPI
+
+El código está en `mibici/serving/`: `schemas.py` (Pydantic), `service.py`
+(`ForecastService`) y `app.py` (FastAPI). Cada instancia trae la estación, la hora y las
+salidas recientes; el servicio calcula el calendario con `DemandFeatureBuilder`, agrega los
+atributos de `estaciones.csv`, valida el panel con `PanelValidator` y recorta los negativos.
+
+```bash
+make api        # uvicorn mibici.serving.app:app --port 8000
+make openapi    # escribe docs/openapi.json
+```
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET /health` | Estado y versión del modelo cargado |
+| `GET /model` | El contenido de `model_info.json` |
+| `POST /predict` | Pronóstico de 1 a 1,000 combinaciones estación-hora |
+| `GET /docs` | Swagger UI con un ejemplo listo para probar |
+
+Ejemplo:
+
+```bash
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{
+  "instances": [{"station_id": 51, "hour_ts": "2026-09-24T08:00:00",
+                 "dep_lag_1": 32, "dep_lag_24": 31, "dep_lag_168": 25,
+                 "dep_roll_mean_24": 15.0417}]}'
+```
+
+```json
+{"model": {"name": "mibici-demanda-salidas", "version": 1, "model_uri": "models:/mibici-demanda-salidas/1"},
+ "predictions": [{"station_id": 51, "hour_ts": "2026-09-24T08:00:00", "pronostico": 30.720685542405807}]}
+```
+
+Errores: 422 si la entrada no cumple el esquema (Pydantic) o si el panel no pasa
+`PanelValidator` (por ejemplo, una estación-hora repetida), 404 si la estación no existe en
+`estaciones.csv` y 503 si el modelo no está cargado. El detalle está en
+[docs/docs/api.md](docs/docs/api.md).
+
+### Imagen Docker
+
+```bash
+docker build -t ml-service:latest .
+docker run -p 8000:8000 ml-service:latest
+```
+
+`make docker-build` y `make docker-run` corren esos mismos comandos. La imagen parte de
+`python:3.11-slim`, corre con un usuario sin privilegios, instala solo
+`requirements-serving.txt` (con `mlflow-skinny` en lugar de `mlflow`) y tiene un
+`HEALTHCHECK` contra `/health`. Ocupa 862 MB en disco (190 MB comprimida).
+
+### Imagen en Docker Hub
+
+La imagen está publicada en
+[luisadr18/mibici-demanda](https://hub.docker.com/r/luisadr18/mibici-demanda):
+
+| Tag | Significado |
+|---|---|
+| `1.0.0` | Versión semántica de la imagen; coincide con la versión de la API (`API_VERSION`). Sirve `models:/mibici-demanda-salidas/1`. |
+| `latest` | Apunta a la última versión publicada (hoy, `1.0.0`) |
+
+Para correrla sin clonar el repositorio:
+
+```bash
+docker run -p 8000:8000 luisadr18/mibici-demanda:1.0.0
+```
+
+Convención: se sube un tag `MAYOR.MENOR.PARCHE` nuevo cada vez que cambia la imagen (el
+parche para correcciones, el menor para un modelo nuevo o un endpoint nuevo que no rompe la
+entrada, el mayor si cambia el esquema de entrada) y se mueve `latest` a esa versión:
+
+```bash
+docker tag ml-service:latest luisadr18/mibici-demanda:<version>
+docker tag ml-service:latest luisadr18/mibici-demanda:latest
+docker push luisadr18/mibici-demanda:<version>
+docker push luisadr18/mibici-demanda:latest
 ```
 
 ## Organización del proyecto
 
 ```
-├── Makefile             <- Comandos: requirements, data, train, predict, test, lint, mlflow-ui
+├── Dockerfile           <- Imagen del servicio (docker build -t ml-service:latest .)
+├── Makefile             <- Comandos: requirements, data, train, predict, test, lint, mlflow-ui, api, docker-build
 ├── README.md
 ├── data
 │   ├── raw              <- CSV originales de MiBici (no versionados en git)
 │   ├── interim          <- viajes_limpios_v1.parquet
 │   ├── processed        <- panel_estacion_hora_v2.parquet, pronostico_salidas.parquet
 │   └── external         <- Fuentes externas (por ahora vacía)
-├── docs                 <- Documentación en mkdocs
-├── models               <- Modelos exportados; los pipelines viven en el Model Registry de MLflow
+├── docs                 <- Documentación en mkdocs y openapi.json
+├── models
+│   └── mibici-demanda-salidas <- Modelo champion exportado: model/, estaciones.csv, model_info.json
 ├── notebooks            <- Notebooks de exploración que usan el paquete
 ├── references           <- Diccionario de datos y bitácora de cambios
 ├── reports
 │   ├── figures          <- Figuras del EDA, de los modelos y capturas de MLflow
 │   └── tables           <- Reporte de limpieza, líneas base y resultados de los modelos
-├── tests                <- Pruebas unitarias y de integración (pytest)
+├── requirements-serving.txt <- Dependencias de la imagen Docker
+├── tests                <- Pruebas unitarias, de integración y de la API (pytest)
 └── mibici               <- Código fuente del proyecto
     ├── config.py        <- Rutas, semilla, fecha de corte, parámetros y espacios de búsqueda
     ├── dataset.py       <- MiBiciLoader: lectura y homologación de columnas
@@ -152,7 +260,13 @@ pytest -q -m integration         # 6 pruebas de integración
     └── modeling
         ├── evaluation.py <- Partición temporal, validación cruzada y métricas
         ├── train.py      <- DemandExperiment: ajuste, evaluación, MLflow y Model Registry
-        └── predict.py    <- DemandForecaster: pronóstico con el modelo registrado
+        ├── predict.py    <- DemandForecaster: pronóstico con el modelo registrado
+        └── export.py     <- ModelExporter: exporta el champion para servirlo
+    └── serving
+        ├── schemas.py    <- Esquemas de entrada y salida (Pydantic)
+        ├── service.py    <- ForecastService: del cuerpo de la API al pronóstico
+        ├── app.py        <- Aplicación FastAPI: /health, /model, /predict
+        └── openapi.py    <- Escribe docs/openapi.json
 ```
 
 Estructura basada en la plantilla Cookiecutter Data Science v2.

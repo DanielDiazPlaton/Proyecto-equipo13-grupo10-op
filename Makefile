@@ -89,6 +89,31 @@ predict:
 mlflow-ui:
 	mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
 
+## Exporta el modelo champion a models/mibici-demanda-salidas para servirlo (Fase 3)
+.PHONY: export-model
+export-model:
+	$(PYTHON_INTERPRETER) -m mibici.modeling.export
+
+## Arranca la API de pronostico en http://localhost:8000 (documentacion en /docs)
+.PHONY: api
+api:
+	uvicorn mibici.serving.app:app --host 127.0.0.1 --port 8000
+
+## Escribe el esquema OpenAPI de la API en docs/openapi.json
+.PHONY: openapi
+openapi:
+	$(PYTHON_INTERPRETER) -m mibici.serving.openapi
+
+## Construye la imagen Docker del servicio
+.PHONY: docker-build
+docker-build:
+	docker build -t ml-service:latest .
+
+## Corre la imagen Docker del servicio en el puerto 8000
+.PHONY: docker-run
+docker-run:
+	docker run -p 8000:8000 ml-service:latest
+
 
 #################################################################################
 # Self Documenting Commands                                                     #
