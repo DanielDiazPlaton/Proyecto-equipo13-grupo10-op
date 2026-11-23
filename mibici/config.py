@@ -52,6 +52,14 @@ SKOPS_TRUSTED_TYPES = [
     "sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor",
 ]
 
+# Servicio (Fase 3): carpeta con el modelo exportado del registro, que entra a la
+# imagen Docker. La API la lee de la variable de entorno MODEL_DIR.
+SERVING_MODEL_DIR = MODELS_DIR / REGISTERED_MODEL_NAME
+SERVING_MODEL_SUBDIR = "model"
+SERVING_STATIONS_FILE = "estaciones.csv"
+SERVING_INFO_FILE = "model_info.json"
+OPENAPI_FILE = PROJ_ROOT / "docs" / "openapi.json"
+
 # Meses usados en el proyecto
 MONTHS = ["2026_07", "2026_08", "2026_09"]
 STATIONS_FILE = "nomenclatura_2026_10.csv"

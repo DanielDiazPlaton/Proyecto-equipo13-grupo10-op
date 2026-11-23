@@ -1,0 +1,290 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MiBici: pronostico de demanda por estacion",
+    "description": "\nPronostico de los viajes que inician en cada estacion de MiBici (Guadalajara) en una hora.\n\nCada instancia trae la estacion, la hora y las salidas recientes de esa estacion\n(`dep_lag_1`, `dep_lag_24`, `dep_lag_168` y `dep_roll_mean_24`). El servicio calcula el\ncalendario y agrega los atributos fijos de la estacion antes de llamar al modelo.\n\nSe aceptan de 1 a 1000 instancias por peticion. Errores:\n\n- **404**: alguna estacion no existe en el catalogo del modelo.\n- **422**: la entrada no cumple el esquema, o el panel no pasa la validacion de datos\n  (por ejemplo, una estacion-hora repetida).\n- **503**: el modelo no esta cargado.\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Estado del servicio y version del modelo cargado.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El modelo no esta cargado"
+          }
+        }
+      }
+    },
+    "/model": {
+      "get": {
+        "summary": "Model Info",
+        "description": "Metadata del modelo servido: version, model_uri, hiperparametros, metricas y datos.",
+        "operationId": "model_info_model_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Model Info Model Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El modelo no esta cargado"
+          }
+        }
+      }
+    },
+    "/predict": {
+      "post": {
+        "summary": "Predict",
+        "description": "Pronostico de salidas por estacion y hora, en el orden de las instancias.",
+        "operationId": "predict_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alguna estacion no existe en estaciones.csv"
+          },
+          "422": {
+            "description": "La entrada no cumple el esquema (Pydantic) o el panel no pasa la validacion de PanelValidator"
+          },
+          "503": {
+            "description": "El modelo no esta cargado"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Forecast": {
+        "properties": {
+          "station_id": {
+            "type": "integer",
+            "title": "Station Id"
+          },
+          "hour_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Hour Ts"
+          },
+          "pronostico": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Pronostico",
+            "description": "Viajes que se espera que inicien en esa hora."
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_id",
+          "hour_ts",
+          "pronostico"
+        ],
+        "title": "Forecast",
+        "description": "Pronostico de una estacion en una hora."
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "ok cuando el modelo esta cargado."
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "model_version": {
+            "type": "integer",
+            "title": "Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "model_name",
+          "model_version"
+        ],
+        "title": "HealthResponse",
+        "description": "Respuesta de GET /health."
+      },
+      "Instance": {
+        "properties": {
+          "station_id": {
+            "type": "integer",
+            "title": "Station Id",
+            "description": "Identificador de la estacion en el catalogo de MiBici."
+          },
+          "hour_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Hour Ts",
+            "description": "Hora a pronosticar, en hora local de Guadalajara y sin zona horaria. Debe ser una hora exacta (minutos y segundos en cero)."
+          },
+          "dep_lag_1": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dep Lag 1",
+            "description": "Salidas de la hora anterior."
+          },
+          "dep_lag_24": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dep Lag 24",
+            "description": "Salidas a la misma hora del dia anterior."
+          },
+          "dep_lag_168": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dep Lag 168",
+            "description": "Salidas a la misma hora de la semana anterior."
+          },
+          "dep_roll_mean_24": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dep Roll Mean 24",
+            "description": "Promedio de salidas de las 24 horas anteriores (sin contar la hora actual)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_id",
+          "hour_ts",
+          "dep_lag_1",
+          "dep_lag_24",
+          "dep_lag_168",
+          "dep_roll_mean_24"
+        ],
+        "title": "Instance",
+        "description": "Una estacion en una hora, con sus salidas recientes."
+      },
+      "ModelRef": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Nombre del modelo en el Model Registry."
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "description": "Version del modelo en el Model Registry."
+          },
+          "model_uri": {
+            "type": "string",
+            "title": "Model Uri",
+            "description": "URI del artefacto: models:/<nombre>/<version>."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "model_uri"
+        ],
+        "title": "ModelRef",
+        "description": "Version del modelo que genero el pronostico."
+      },
+      "PredictRequest": {
+        "properties": {
+          "instances": {
+            "items": {
+              "$ref": "#/components/schemas/Instance"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Instances",
+            "description": "De 1 a 1000 combinaciones estacion-hora, sin repetirse."
+          }
+        },
+        "type": "object",
+        "required": [
+          "instances"
+        ],
+        "title": "PredictRequest",
+        "description": "Cuerpo de POST /predict.",
+        "examples": [
+          {
+            "instances": [
+              {
+                "dep_lag_1": 32.0,
+                "dep_lag_168": 25.0,
+                "dep_lag_24": 31.0,
+                "dep_roll_mean_24": 15.041666666666666,
+                "hour_ts": "2026-09-24T08:00:00",
+                "station_id": 51
+              },
+              {
+                "dep_lag_1": 31.0,
+                "dep_lag_168": 41.0,
+                "dep_lag_24": 39.0,
+                "dep_roll_mean_24": 16.041666666666668,
+                "hour_ts": "2026-09-24T18:00:00",
+                "station_id": 51
+              }
+            ]
+          }
+        ]
+      },
+      "PredictResponse": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/ModelRef"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/Forecast"
+            },
+            "type": "array",
+            "title": "Predictions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "predictions"
+        ],
+        "title": "PredictResponse",
+        "description": "Respuesta de POST /predict, en el mismo orden que las instancias recibidas."
+      }
+    }
+  }
+}

@@ -18,6 +18,7 @@ Los datos son los archivos mensuales de viajes y el catálogo de estaciones publ
 |---|---|---|
 | 1. Datos | Limpieza, análisis exploratorio, panel estación-hora y versiones del dataset en MLflow | `make data` |
 | 2. Modelado | Pipeline de scikit-learn, ajuste de hiperparámetros, seguimiento en MLflow y Model Registry | `make train`, `make predict` |
+| 3. Servicio | Modelo exportado, API con FastAPI e imagen Docker | `make export-model`, `make api`, `make docker-build` |
 
 ## Comandos
 
@@ -34,3 +35,8 @@ El `Makefile` reúne los puntos de entrada del proyecto. `make help` muestra la 
 | `make test` | Corre las pruebas unitarias y de integración (`pytest -q`) |
 | `make lint` | Revisa el estilo con ruff |
 | `make mlflow-ui` | Abre la interfaz de MLflow |
+| `make export-model` | Exporta el modelo `champion` a `models/mibici-demanda-salidas/` para servirlo |
+| `make api` | Arranca la API en http://localhost:8000 (documentación en `/docs`) |
+| `make openapi` | Escribe el esquema OpenAPI en `docs/openapi.json` |
+| `make docker-build` | Construye la imagen: `docker build -t ml-service:latest .` |
+| `make docker-run` | Corre la imagen: `docker run -p 8000:8000 ml-service:latest` |
