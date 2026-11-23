@@ -1,0 +1,56 @@
+{
+  "registered_model_name": "mibici-demanda-salidas",
+  "version": 1,
+  "alias": "champion",
+  "model_uri": "models:/mibici-demanda-salidas/1",
+  "model_uri_alias": "models:/mibici-demanda-salidas@champion",
+  "run_id": "8927ded56f804032bdae45f7477772ea",
+  "algoritmo": "gradient_boosting",
+  "estimador": "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingRegressor",
+  "hiperparametros": {
+    "min_samples_leaf": 100,
+    "max_leaf_nodes": 31,
+    "max_iter": 200,
+    "loss": "squared_error",
+    "learning_rate": 0.2,
+    "l2_regularization": 0.0
+  },
+  "metricas_validacion": {
+    "cv_rmse": 1.2704056239464607,
+    "cv_mae": 0.7030255329179648
+  },
+  "metricas_prueba": {
+    "MAE": 0.8620826004323376,
+    "RMSE": 1.5018396185330491,
+    "WAPE_pct": 54.538909589154684,
+    "sesgo": -0.1333600454990368
+  },
+  "periodo_prueba_desde": "2026-09-17",
+  "variables": [
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "is_weekend",
+    "is_holiday",
+    "dep_lag_1",
+    "dep_lag_24",
+    "dep_lag_168",
+    "dep_roll_mean_24",
+    "capacity",
+    "lat",
+    "lon",
+    "pc1",
+    "pc2",
+    "pc3",
+    "zone",
+    "station_cluster"
+  ],
+  "estaciones": 469,
+  "data.version": "v2.1",
+  "data.sha256": "76f3621b3722fd8e93aff4915217621764f2cbeb23b2ece82c9bf22c3bbe5109",
+  "fecha_exportacion": "2026-11-21T23:47:11",
+  "python": "3.11.9",
+  "scikit-learn": "1.9.1",
+  "mlflow": "3.17.2"
+}

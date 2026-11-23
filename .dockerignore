@@ -1,0 +1,26 @@
+# Solo entran a la imagen pyproject.toml, README.md, LICENSE, requirements-serving.txt,
+# el paquete mibici/ y el modelo exportado en models/mibici-demanda-salidas/.
+.git/
+.gitignore
+.venv/
+venv/
+data/
+mlruns/
+mlartifacts/
+mlflow.db
+*.db
+notebooks/
+reports/
+references/
+tests/
+docs/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.env
+Dockerfile
+.dockerignore
+Makefile
+requirements.txt
