@@ -39,7 +39,7 @@ PANEL_VERSION = "v2.1"
 # variable de entorno MLFLOW_TRACKING_URI.
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{PROJ_ROOT / 'mlflow.db'}")
 MLFLOW_EXPERIMENT = "mibici-fase1-datos"
-MLFLOW_MODEL_EXPERIMENT = "mibici-fase2-modelos"
+MLFLOW_MODEL_EXPERIMENT = "mibici-fasefinal-modelos"
 
 # Model Registry: un solo modelo registrado; cada candidato es una version.
 REGISTERED_MODEL_NAME = "mibici-demanda-salidas"
