@@ -2,23 +2,32 @@
 
 ## 1. Entorno
 
-Se requiere Python 3.11.
+Se requiere Python 3.11 o superior.
 
 ```bash
 python3.11 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate      # en Windows: .venv\Scripts\activate
 make requirements
 ```
 
 ## 2. Datos crudos
 
-Los CSV no se suben al repositorio por su tamaño. Descarga de
-<https://www.mibici.net/es/datos-abiertos/> estos cuatro archivos y colócalos en `data/raw/`:
+Los CSV no se suben al repositorio por su tamaño. Se necesitan estos cuatro archivos en `data/raw/`:
 
 - `datos_abiertos_2026_07.csv`
 - `datos_abiertos_2026_08.csv`
 - `datos_abiertos_2026_09.csv`
 - `nomenclatura_2026_10.csv`
+
+La forma más sencilla es descargarlos con el cargador del paquete, que localiza los enlaces en
+<https://www.mibici.net/es/datos-abiertos/> y guarda los archivos en `data/raw/`. Si un archivo ya
+existe, se omite la descarga:
+
+```bash
+python -c "from mibici.dataset import MiBiciLoader as L; l = L(); l.download_trips(2026, [7, 8, 9]); l.download_stations()"
+```
+
+También puedes descargarlos a mano desde el portal y colocarlos en `data/raw/`.
 
 ## 3. Fase 1: datos
 
