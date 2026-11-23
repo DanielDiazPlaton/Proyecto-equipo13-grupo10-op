@@ -76,7 +76,7 @@ SHA-256 del contenido y el archivo parquet resultante.
    `mibici/config.py` (`SEARCH_SPACES`).
 5. **Evaluación.** MAE, RMSE, WAPE y sesgo en el periodo de prueba, en total y por grupo de
    estación, comparados contra la regla "misma hora de la semana anterior".
-6. **Seguimiento en MLflow** (experimento `mibici-fase2-modelos`): un run por modelo con
+6. **Seguimiento en MLflow** (experimento `mibici-fasefinal-modelos`): un run por modelo con
    hiperparámetros, métricas, tablas, figuras y el pipeline; un run anidado por cada
    combinación probada; y un run por cada línea base. Todos llevan la versión y la huella
    SHA-256 del panel con el que se entrenaron.
