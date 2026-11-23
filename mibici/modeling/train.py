@@ -1,7 +1,8 @@
 """Entrenamiento, ajuste, evaluacion y registro de los modelos de demanda (Fase 2).
 
 Flujo:
-    1. Carga el panel estacion-hora y lo parte por fecha en entrenamiento y prueba.
+    1. Carga el panel estacion-hora, valida su esquema (mibici.validation) y lo
+       parte por fecha en entrenamiento y prueba.
     2. Arma un Pipeline de scikit-learn por modelo candidato (preprocesamiento + modelo).
     3. Ajusta hiperparametros con busqueda aleatoria y validacion cruzada temporal.
     4. Evalua el mejor pipeline de cada modelo en el periodo de prueba.
@@ -37,6 +38,7 @@ import typer
 from mibici.config import (
     CHALLENGER_ALIAS,
     CHAMPION_ALIAS,
+    EXPECTED_FINGERPRINTS,
     MLFLOW_MODEL_EXPERIMENT,
     MLFLOW_TRACKING_URI,
     PANEL_FILE,
@@ -59,7 +61,7 @@ from mibici.modeling.evaluation import (
     temporal_cv_splits,
     temporal_split,
 )
-from mibici.versioning import dataframe_fingerprint
+from mibici.validation import PanelValidator
 
 app = typer.Typer()
 
@@ -173,7 +175,14 @@ class DemandExperiment:
         experiment: str = MLFLOW_MODEL_EXPERIMENT,
         registered_model: str = REGISTERED_MODEL_NAME,
         data_source: str = str(PANEL_FILE),
+        expected_fingerprint: str | None = EXPECTED_FINGERPRINTS.get(PANEL_VERSION),
     ):
+        # Antes de tocar MLflow: si el panel no tiene el esquema esperado, el
+        # entrenamiento se detiene con DataValidationError y no deja runs a medias.
+        self.validator = PanelValidator()
+        self.validator.validate(panel, expected_fingerprint=expected_fingerprint)
+        self.validator.raise_if_failed()
+
         self.config = config or TrainingConfig()
         self.search_spaces = search_spaces or SEARCH_SPACES
         self.registered_model = registered_model
@@ -192,7 +201,8 @@ class DemandExperiment:
         self.data_tags = {
             "data.name": "mibici_panel",
             "data.version": PANEL_VERSION,
-            "data.sha256": dataframe_fingerprint(panel),
+            "data.sha256": self.validator.stats["sha256"],
+            "data.validacion": self.validator.status,
         }
         self.dataset = mlflow.data.from_pandas(
             panel.head(1000), source=data_source, name="mibici_panel"
@@ -283,6 +293,9 @@ class DemandExperiment:
                 }
             )
             mlflow.log_input(self.dataset, context="training")
+            mlflow.log_text(
+                self.validator.report_frame().to_csv(index=False), "reporte_validacion_panel.csv"
+            )
             run_params = {k: v for k, v in cfg.to_params().items() if k != "models"}
             run_params.update(
                 {

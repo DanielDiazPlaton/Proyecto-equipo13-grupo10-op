@@ -59,6 +59,16 @@ create_environment:
 #################################################################################
 
 
+## Revisa los CSV de data/raw: archivos, columnas, catalogo y huella de la version v0
+.PHONY: check-raw
+check-raw:
+	$(PYTHON_INTERPRETER) -m mibici.validation raw
+
+## Valida el esquema del panel estacion-hora (tambien corre dentro de make train)
+.PHONY: validate
+validate:
+	$(PYTHON_INTERPRETER) -m mibici.validation panel
+
 ## Corre la Fase 1 completa (limpieza, features, EDA y versiones en MLflow)
 .PHONY: data
 data:

@@ -26,7 +26,7 @@ python -c "from mibici.dataset import MiBiciLoader as L; l = L(); l.download_tri
 make data       # Fase 1: limpieza, features, EDA y versiones del dataset en MLflow
 make train      # Fase 2: ajuste, evaluación y registro de modelos en MLflow
 make predict    # pronóstico con el modelo champion del Model Registry
-make test
+make test       # todas las pruebas; equivale a: pytest -q
 make mlflow-ui  # interfaz de MLflow en http://localhost:5000
 ```
 
@@ -97,6 +97,36 @@ Los resultados quedan en `reports/tables/` (`resultados_modelos.csv`,
 `busqueda_hiperparametros.csv`, `metricas_por_grupo.csv`, `importancia_variables.csv`,
 `mejores_hiperparametros.json`) y en `reports/figures/` (figuras 14 a 18).
 
+## Pruebas
+
+Todas las pruebas se corren con un solo comando desde la raíz del repositorio:
+
+```bash
+pytest -q
+```
+
+`make test` hace lo mismo. Las pruebas usan datos sintéticos y un `mlflow.db` temporal, así que
+no necesitan los CSV de MiBici ni haber corrido `make data` o `make train`, y no tocan los
+experimentos del proyecto. Son 44 pruebas y tardan menos de un minuto.
+
+| Archivo | Tipo | Qué valida |
+|---|---|---|
+| `tests/test_data.py` | Unitarias | Reglas de limpieza, huella SHA-256 y lectura del catálogo en Latin-1 |
+| `tests/test_features.py` | Unitarias | Preprocesamiento: conteo de salidas y llegadas, calendario, rezagos sin fuga de información, imputación, escalado y one-hot |
+| `tests/test_metrics.py` | Unitarias | Cálculo de métricas: MAE, RMSE, WAPE y sesgo, por segmento y de las líneas base |
+| `tests/test_inference.py` | Unitarias | Inferencia: `DemandForecaster.predict` con un modelo simulado (recorte de negativos, columnas, rechazo de un panel inválido) |
+| `tests/test_modeling.py` | Unitarias y una de integración | Partición y validación cruzada temporal, pipelines de cada modelo, y entrenamiento con registro en MLflow |
+| `tests/test_validation.py` | Unitarias | Validación del panel y de los CSV crudos |
+| `tests/test_integration.py` | Integración | Flujo completo: CSV crudos → limpieza → variables → validación → entrenamiento y Model Registry → predicción → métricas |
+
+Las pruebas de integración llevan el marcador `integration` y son las que entrenan modelos.
+Para correr solo una parte:
+
+```bash
+pytest -q -m "not integration"   # 38 pruebas unitarias, en segundos
+pytest -q -m integration         # 6 pruebas de integración
+```
+
 ## Organización del proyecto
 
 ```
@@ -114,7 +144,7 @@ Los resultados quedan en `reports/tables/` (`resultados_modelos.csv`,
 ├── reports
 │   ├── figures          <- Figuras del EDA, de los modelos y capturas de MLflow
 │   └── tables           <- Reporte de limpieza, líneas base y resultados de los modelos
-├── tests                <- Pruebas unitarias de limpieza, versionado y modelado
+├── tests                <- Pruebas unitarias y de integración (pytest)
 └── mibici               <- Código fuente del proyecto
     ├── config.py        <- Rutas, semilla, fecha de corte, parámetros y espacios de búsqueda
     ├── dataset.py       <- MiBiciLoader: descarga desde mibici.net, lectura y homologación de columnas

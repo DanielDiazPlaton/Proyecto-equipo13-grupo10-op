@@ -63,6 +63,11 @@ versiones registradas.
 ## 6. Pruebas
 
 ```bash
-make test
+pytest -q                        # todas las pruebas (igual que make test)
+pytest -q -m "not integration"   # solo las unitarias
+pytest -q -m integration         # solo las de integración (entrenan modelos)
 make lint
 ```
+
+Las pruebas usan datos sintéticos y un `mlflow.db` temporal: no necesitan los CSV de MiBici ni
+haber corrido `make data` o `make train`.

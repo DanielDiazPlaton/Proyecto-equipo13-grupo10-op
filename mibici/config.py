@@ -58,6 +58,21 @@ STATIONS_FILE = "nomenclatura_2026_10.csv"
 # MiBici publica unos archivos en UTF-8 y otros en Latin-1; se prueban en este orden.
 CSV_ENCODINGS = ("utf-8", "latin-1")
 
+# Huellas SHA-256 de cada version de datos (mibici.versioning.dataframe_fingerprint),
+EXPECTED_FINGERPRINTS = {
+    "v0": "ae874bbb1ee3c98228a3f06bc1cd40ad822aeb36980bc49e0ea069875db7f21a",
+    "v1": "fa547bf66f45f4037fa3a1962d37fc6fe738ff2f3bcb7bb11ae7a080505f9d87",
+    "v1b": "b104f96d50a561633031d275ed21973c1efd23e2f7bb691155cdf7b1d4cb9481",
+    "v2.1": "6c573764ce041bc7f7c3b9f458cc81a3d15d3ab2377477dd2f1109750cfab25e",
+}
+
+# Filas de la version v0 (los tres CSV mensuales concatenados)
+# Catalogo de estaciones con el que se construyo el panel v2.1.
+# Huella SHA-256 del archivo tal como se descargo (7 de noviembre de 2026).
+EXPECTED_RAW_ROWS = 1_271_837
+EXPECTED_STATIONS = 470
+EXPECTED_STATIONS_FILE_SHA256 = "2da38dd60dcc74ccb95eb8ed1572e107cf5af44dfa6c5a4fbfa4e30f94ef7f3e"
+
 # Dias festivos dentro del periodo analizado (Mexico)
 HOLIDAYS = ["2026-09-16"]
 
@@ -143,4 +158,26 @@ class TrainingConfig:
     def to_params(self) -> dict:
         params = asdict(self)
         params["models"] = ",".join(self.models)
+        return params
+
+
+@dataclass
+class PanelValidationConfig:
+    """Reglas para validar el panel antes de entrenar o pronosticar.
+    Las violaciones de esquema, como columnas que faltan, tipos incorrectos, objetivo mal definido, llaves ausentes o rangos de variables construidas que no coinciden, hacen que el proceso se detenga.
+    Las violaciones de plausibilidad, como coordenadas fuera del área metropolitana, capacidad que no es positiva o huella que es distinta, solo se registran como advertencia porque no impiden que se entrene.
+    """
+
+    # Porcentaje maximo de nulos en una variable del modelo.
+    max_null_pct: float = 5.0
+
+    # Area metropolitana de Guadalajara, con margen.
+    lat_range: tuple = (20.4, 20.9)
+    lon_range: tuple = (-103.6, -103.1)
+    valid_zones: tuple = ("GDL", "ZPN", "TLQ", "OTRA")
+
+    def to_params(self) -> dict:
+        params = asdict(self)
+        for key in ("lat_range", "lon_range", "valid_zones"):
+            params[key] = ",".join(str(x) for x in params[key])
         return params
