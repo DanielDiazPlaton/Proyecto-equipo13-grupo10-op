@@ -6,8 +6,10 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
 from mibici.config import HOLIDAYS, FeatureConfig
 
@@ -158,17 +160,43 @@ NUMERIC_FEATURES = [
     "pc2",
     "pc3",
 ]
+# Variables de conteo (rezagos y promedio movil): tienen cola larga a la derecha.
+COUNT_FEATURES = ["dep_lag_1", "dep_lag_24", "dep_lag_168", "dep_roll_mean_24"]
 CATEGORICAL_FEATURES = ["zone", "station_cluster"]
+MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 TARGET = "departures"
 
 
-def build_preprocessor() -> ColumnTransformer:
-    """Estandariza numericas y aplica one-hot a categoricas."""
+def build_preprocessor(log_counts: bool = False) -> ColumnTransformer:
+    """Preprocesamiento del panel como primer paso del Pipeline de scikit-learn.
+
+    Tres ramas, cada una ajustada solo con los datos de entrenamiento:
+
+    - conteos: imputacion con la mediana, log(1 + x) opcional y estandarizacion.
+    - numericas: imputacion con la mediana y estandarizacion.
+    - categoricas: one-hot; una categoria no vista en entrenamiento queda en ceros.
+
+    log_counts=True se usa en modelos con enlace logaritmico (regresion Poisson):
+    ahi un rezago en escala original tendria un efecto exponencial sobre el
+    pronostico, y en escala logaritmica el efecto es proporcional.
+    """
+    other_numeric = [c for c in NUMERIC_FEATURES if c not in COUNT_FEATURES]
+    count_steps = [("imputar", SimpleImputer(strategy="median"))]
+    if log_counts:
+        count_steps.append(
+            ("log1p", FunctionTransformer(np.log1p, feature_names_out="one-to-one"))
+        )
+    count_steps.append(("escalar", StandardScaler()))
+    numeric_steps = [
+        ("imputar", SimpleImputer(strategy="median")),
+        ("escalar", StandardScaler()),
+    ]
     return ColumnTransformer(
         [
-            ("num", StandardScaler(), NUMERIC_FEATURES),
+            ("conteos", Pipeline(count_steps), COUNT_FEATURES),
+            ("numericas", Pipeline(numeric_steps), other_numeric),
             (
-                "cat",
+                "categoricas",
                 OneHotEncoder(handle_unknown="ignore", sparse_output=False),
                 CATEGORICAL_FEATURES,
             ),

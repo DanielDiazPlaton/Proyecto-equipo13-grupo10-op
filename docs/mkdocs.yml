@@ -1,0 +1,7 @@
+site_name: mibici-mlops
+site_description: Pronóstico de demanda horaria por estación del sistema MiBici
+site_author: Equipo 13 (Operaciones de aprendizaje automático, Gpo 10)
+nav:
+  - Inicio: index.md
+  - Cómo reproducir: getting-started.md
+  - Validación de los datos: validacion.md

@@ -15,7 +15,7 @@
 
 Columnas derivadas en v1: source_month, duration_min, age, age_group, start_hour, is_round_trip.
 
-## Estaciones (data/raw/nomenclatura_2026_09.csv)
+## Estaciones (data/raw/nomenclatura_2026_10.csv)
 
 | Columna original | Columna en el proyecto | Descripción |
 |---|---|---|

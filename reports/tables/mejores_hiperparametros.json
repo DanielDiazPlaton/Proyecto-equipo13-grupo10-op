@@ -1,0 +1,16 @@
+{
+  "ridge": {
+    "alpha": 0.01
+  },
+  "poisson_glm": {
+    "alpha": 0.1
+  },
+  "gradient_boosting": {
+    "min_samples_leaf": 100,
+    "max_leaf_nodes": 31,
+    "max_iter": 200,
+    "loss": "squared_error",
+    "learning_rate": 0.2,
+    "l2_regularization": 0.0
+  }
+}

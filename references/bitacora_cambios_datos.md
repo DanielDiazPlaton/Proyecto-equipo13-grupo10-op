@@ -11,3 +11,4 @@
 | v1 | v0 | 89 años de nacimiento fuera de 1940 a 2010 se convierten en nulo; género nulo pasa a NE | 1,207,341 |
 | v1b | v0 | Igual que v1 pero con duración máxima de 48.6 min (regla de Tukey en escala log) | 1,204,974 |
 | v2 | v1 | Agregación a panel estación-hora, features de calendario, rezagos, PCA y KMeans; se quitan las primeras 168 h por falta de rezagos | 956,760 |
+| v2.1 | v1 | Mismo panel que v2, con coordenadas, capacidad y municipio tomados del catálogo `nomenclatura_2026_10.csv` (470 estaciones; el de septiembre tenía 484). Las 14 estaciones que ya no aparecen no tienen viajes en el periodo, por lo que v0, v1 y v1b conservan su huella. Cambia la huella del panel (6c573764ce04) | 956,760 |

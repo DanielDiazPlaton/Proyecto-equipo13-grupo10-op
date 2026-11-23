@@ -56,3 +56,13 @@ def test_fingerprint_changes_with_data():
     other.loc[0, "origin_id"] = 3
     assert dataframe_fingerprint(df) == dataframe_fingerprint(df.copy())
     assert dataframe_fingerprint(df) != dataframe_fingerprint(other)
+
+
+def test_loader_reads_latin1_catalog(tmp_path):
+    from mibici.dataset import MiBiciLoader
+
+    content = "id,name,latitude,longitude,dpcapacity\n3,(GDL-002) Av. Niños héroes,20.66,-103.36,15\n"
+    (tmp_path / "catalogo.csv").write_bytes(content.encode("latin-1"))
+    stations = MiBiciLoader(tmp_path).load_stations("catalogo.csv")
+    assert stations.loc[0, "station_name"] == "(GDL-002) Av. Niños héroes"
+    assert stations.loc[0, "zone"] == "GDL"

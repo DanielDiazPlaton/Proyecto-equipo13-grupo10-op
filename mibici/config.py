@@ -1,4 +1,8 @@
-"""Configuracion central del proyecto: rutas, parametros de limpieza y de MLflow."""
+"""Configuracion central del proyecto: rutas, parametros de datos, de modelado y de MLflow.
+
+Todo valor que cambia entre corridas (rutas, umbrales, semillas, fechas de corte,
+hiperparametros) vive aqui. Los modulos lo reciben como parametro y lo registran en MLflow.
+"""
 
 from dataclasses import asdict, dataclass, field
 import os
@@ -20,19 +24,62 @@ EXTERNAL_DATA_DIR = DATA_DIR / "external"
 MODELS_DIR = PROJ_ROOT / "models"
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+TABLES_DIR = REPORTS_DIR / "tables"
+
+# Archivos que conectan las etapas del pipeline
+CLEAN_TRIPS_FILE = INTERIM_DATA_DIR / "viajes_limpios_v1.parquet"
+PANEL_FILE = PROCESSED_DATA_DIR / "panel_estacion_hora_v2.parquet"
+PREDICTIONS_FILE = PROCESSED_DATA_DIR / "pronostico_salidas.parquet"
+# v2.1: mismo panel que la v2 de la Fase 1, con los atributos de estacion del
+# catalogo de octubre de 2026 (ver references/bitacora_cambios_datos.md).
+PANEL_VERSION = "v2.1"
 
 # MLflow: backend local en SQLite para que cualquier integrante pueda
 # reproducir los runs sin levantar un servidor. Se puede cambiar con la
 # variable de entorno MLFLOW_TRACKING_URI.
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{PROJ_ROOT / 'mlflow.db'}")
 MLFLOW_EXPERIMENT = "mibici-fase1-datos"
+MLFLOW_MODEL_EXPERIMENT = "mibici-fase2-modelos"
 
-# Meses usados en la Fase 1
+# Model Registry: un solo modelo registrado; cada candidato es una version.
+REGISTERED_MODEL_NAME = "mibici-demanda-salidas"
+CHAMPION_ALIAS = "champion"
+CHALLENGER_ALIAS = "challenger"
+# MLflow guarda los pipelines en formato skops, que solo carga tipos declarados
+# como confiables. Estos son los que usan los modelos candidatos.
+SKOPS_TRUSTED_TYPES = [
+    "numpy.dtype",
+    "sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor",
+]
+
+# Meses usados en el proyecto
 MONTHS = ["2026_07", "2026_08", "2026_09"]
-STATIONS_FILE = "nomenclatura_2026_09.csv"
+STATIONS_FILE = "nomenclatura_2026_10.csv"
+# MiBici publica unos archivos en UTF-8 y otros en Latin-1; se prueban en este orden.
+CSV_ENCODINGS = ("utf-8", "latin-1")
+
+# Huellas SHA-256 de cada version de datos (mibici.versioning.dataframe_fingerprint),
+EXPECTED_FINGERPRINTS = {
+    "v0": "ae874bbb1ee3c98228a3f06bc1cd40ad822aeb36980bc49e0ea069875db7f21a",
+    "v1": "fa547bf66f45f4037fa3a1962d37fc6fe738ff2f3bcb7bb11ae7a080505f9d87",
+    "v1b": "b104f96d50a561633031d275ed21973c1efd23e2f7bb691155cdf7b1d4cb9481",
+    "v2.1": "6c573764ce041bc7f7c3b9f458cc81a3d15d3ab2377477dd2f1109750cfab25e",
+}
+
+# Filas de la version v0 (los tres CSV mensuales concatenados)
+# Catalogo de estaciones con el que se construyo el panel v2.1.
+# Huella SHA-256 del archivo tal como se descargo (7 de noviembre de 2026).
+EXPECTED_RAW_ROWS = 1_271_837
+EXPECTED_STATIONS = 470
+EXPECTED_STATIONS_FILE_SHA256 = "2da38dd60dcc74ccb95eb8ed1572e107cf5af44dfa6c5a4fbfa4e30f94ef7f3e"
 
 # Dias festivos dentro del periodo analizado (Mexico)
 HOLIDAYS = ["2026-09-16"]
+
+# Semilla unica y fecha de corte de la particion temporal. Entrenamiento: antes
+# de TEST_START. Prueba: desde TEST_START hasta el final del periodo.
+RANDOM_STATE = 42
+TEST_START = "2026-09-17"
 
 
 @dataclass
@@ -61,9 +108,76 @@ class FeatureConfig:
     rolling_window: int = 24
     n_pca_components: int = 3
     k_clusters: int = 3
-    random_state: int = 42
+    random_state: int = RANDOM_STATE
 
     def to_params(self) -> dict:
         params = asdict(self)
         params["lags"] = ",".join(str(x) for x in self.lags)
+        return params
+
+
+# Espacios de busqueda de hiperparametros por modelo. Las llaves usan la
+# convencion de scikit-learn "<paso>__<parametro>" del Pipeline. La busqueda
+# aleatoria toma n_iter combinaciones de cada espacio.
+SEARCH_SPACES: dict[str, dict[str, list]] = {
+    "ridge": {
+        "model__alpha": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
+    },
+    "poisson_glm": {
+        "model__alpha": [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+    },
+    "gradient_boosting": {
+        "model__loss": ["poisson", "squared_error"],
+        "model__learning_rate": [0.03, 0.05, 0.1, 0.2],
+        "model__max_iter": [100, 200, 300],
+        "model__max_leaf_nodes": [15, 31, 63],
+        "model__min_samples_leaf": [20, 50, 100, 200],
+        "model__l2_regularization": [0.0, 0.1, 1.0],
+    },
+}
+
+
+@dataclass
+class TrainingConfig:
+    """Parametros del entrenamiento, el ajuste y la evaluacion de modelos."""
+
+    target: str = "departures"
+    test_start: str = TEST_START
+    models: tuple = ("ridge", "poisson_glm", "gradient_boosting")
+    # Validacion cruzada temporal de ventana expandible sobre el periodo de entrenamiento
+    cv_splits: int = 3
+    # Combinaciones de hiperparametros que se prueban por modelo
+    n_iter: int = 8
+    # Metrica con la que se elige la mejor combinacion y el modelo campeon
+    selection_metric: str = "rmse"
+    n_jobs: int = 1
+    random_state: int = RANDOM_STATE
+    # Filas de prueba usadas para la importancia por permutacion
+    importance_sample: int = 50_000
+
+    def to_params(self) -> dict:
+        params = asdict(self)
+        params["models"] = ",".join(self.models)
+        return params
+
+
+@dataclass
+class PanelValidationConfig:
+    """Reglas para validar el panel antes de entrenar o pronosticar.
+    Las violaciones de esquema, como columnas que faltan, tipos incorrectos, objetivo mal definido, llaves ausentes o rangos de variables construidas que no coinciden, hacen que el proceso se detenga.
+    Las violaciones de plausibilidad, como coordenadas fuera del área metropolitana, capacidad que no es positiva o huella que es distinta, solo se registran como advertencia porque no impiden que se entrene.
+    """
+
+    # Porcentaje maximo de nulos en una variable del modelo.
+    max_null_pct: float = 5.0
+
+    # Area metropolitana de Guadalajara, con margen.
+    lat_range: tuple = (20.4, 20.9)
+    lon_range: tuple = (-103.6, -103.1)
+    valid_zones: tuple = ("GDL", "ZPN", "TLQ", "OTRA")
+
+    def to_params(self) -> dict:
+        params = asdict(self)
+        for key in ("lat_range", "lon_range", "valid_zones"):
+            params[key] = ",".join(str(x) for x in params[key])
         return params
